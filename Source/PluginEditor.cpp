@@ -85,9 +85,10 @@ void drawSectionFrame (juce::Graphics& g, juce::Rectangle<float> r, const juce::
         const auto f2 = panelFont (11.0f, false).withExtraKerningFactor (0.1f);
         g.setFont (f2);
         g.setColour (colours::dimText);
-        g.drawText (lat.toUpperCase(), juce::Rectangle<float> (x, header.getY() + 1.0f, 200.0f, header.getHeight()),
+        const auto en = "(" + lat.toUpperCase() + ")";
+        g.drawText (en, juce::Rectangle<float> (x, header.getY() + 1.0f, 220.0f, header.getHeight()),
                     juce::Justification::centredLeft);
-        x += juce::GlyphArrangement::getStringWidth (f2, lat.toUpperCase()) + 8.0f;
+        x += juce::GlyphArrangement::getStringWidth (f2, en) + 8.0f;
     }
 
     // Graverad linje ut till högerkanten.
@@ -333,7 +334,7 @@ Control::Control (juce::AudioProcessorValueTreeState& apvts, const juce::String&
         sliderAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (apvts, paramId, *slider);
         if (auto* ranged = dynamic_cast<juce::RangedAudioParameter*> (param))
             slider->setDoubleClickReturnValue (true, ranged->convertFrom0to1 (ranged->getDefaultValue()));
-        slider->setTooltip (param->getName (64) + " (dubbelklick = standard)");
+        slider->setTooltip (param->getName (64) + " (dubbelklick = standard / double-click = default)");
         addAndMakeVisible (*slider);
     }
 }
@@ -461,17 +462,21 @@ StesoLeadEditor::StesoLeadEditor (StesoLeadProcessor& p)
                                                              &lfo, &voice, &fx, &output })
         content.addAndMakeVisible (c);
 
-    // Presetväljare grupperad per kategori.
+    // Presetväljare grupperad per kategori (i den ordning kategorin först förekommer).
+    // ID = programnummer + 1, så ordningen i listan påverkar inte sparade projekt.
     const auto& presets = getFactoryPresets();
-    juce::String lastCategory;
-    for (size_t i = 0; i < presets.size(); ++i)
+    juce::StringArray categories;
+    for (const auto& pr : presets)
+        categories.addIfNotAlreadyThere (pr.category);
+    for (const auto& category : categories)
     {
-        if (presets[i].category != lastCategory)
-        {
-            presetBox.addSectionHeading (presets[i].category);
-            lastCategory = presets[i].category;
-        }
-        presetBox.addItem (presets[i].name, (int) i + 1);
+        presetBox.addSectionHeading (category);
+        for (size_t i = 0; i < presets.size(); ++i)
+            if (presets[i].category == category)
+            {
+                presetBox.addItem (presets[i].name, (int) i + 1);
+                presetOrder.push_back ((int) i);
+            }
     }
     presetBox.setTextWhenNothingSelected ("Preset");
     presetBox.onChange = [this]
@@ -553,7 +558,7 @@ void StesoLeadEditor::paint (juce::Graphics& g)
     auto sub = header.withTrimmedLeft (w + 16.0f).translated (0.0f, 4.0f);
     g.setFont (panelFont (13.0f, false).withExtraKerningFactor (0.12f));
     g.setColour (colours::dimText);
-    g.drawText (juce::String::fromUTF8 ("СТЕСОЛИД  ·  ЭМИ-12  ·  v" STESO_VERSION), sub, juce::Justification::centredLeft);
+    g.drawText (juce::String::fromUTF8 ("POLYFON ANALOGSYNT (POLYPHONIC ANALOG SYNTH)  ·  v" STESO_VERSION), sub, juce::Justification::centredLeft);
 }
 
 void StesoLeadEditor::resized()
@@ -565,7 +570,7 @@ void StesoLeadEditor::resized()
 
     auto header = r.removeFromTop (46);
     header.removeFromLeft (420);
-    voicesLabel.setBounds (header.removeFromRight (110).reduced (0, 10));
+    voicesLabel.setBounds (header.removeFromRight (150).reduced (0, 10));
     header.removeFromRight (12);
     nextButton.setBounds (header.removeFromRight (34).reduced (0, 8));
     header.removeFromRight (4);
@@ -616,7 +621,7 @@ void StesoLeadEditor::timerCallback()
     if (v != lastVoices)
     {
         lastVoices = v;
-        voicesLabel.setText (juce::String::fromUTF8 ("ГОЛОСА ") + juce::String (v) + "/" + juce::String (steso::dsp::SynthEngine::maxVoices),
+        voicesLabel.setText (juce::String::fromUTF8 ("RÖSTER (VOICES) ") + juce::String (v) + "/" + juce::String (steso::dsp::SynthEngine::maxVoices),
                              juce::dontSendNotification);
     }
 }
@@ -628,8 +633,12 @@ void StesoLeadEditor::refreshPresetBox()
 
 void StesoLeadEditor::stepPreset (int delta)
 {
-    const int n = processor.getNumPrograms();
-    const int next = (processor.getCurrentProgram() + delta + n) % n;
-    processor.setCurrentProgram (next);
+    // Bläddra i samma ordning som listan visar (grupperad per kategori).
+    const int n = (int) presetOrder.size();
+    if (n == 0)
+        return;
+    const auto it = std::find (presetOrder.begin(), presetOrder.end(), processor.getCurrentProgram());
+    const int pos = it == presetOrder.end() ? 0 : (int) (it - presetOrder.begin());
+    processor.setCurrentProgram (presetOrder[(size_t) ((pos + delta + n) % n)]);
     refreshPresetBox();
 }

@@ -55,7 +55,7 @@ const std::vector<Preset>& getFactoryPresets()
             { glide, 0.12f }, { lfoPitch, 0.3f }, { lfoFade, 0.7f }, { lfoRate, 5.0f },
             { reverbMix, 0.3f }, { delayMix, 0.2f }, { spread, 0.0f } } },
 
-        { "Juno Strings", "Pad", {
+        { "Chorus Strings", "Pad", {
             { osc2Fine, 12 }, { mixOsc2, 0.5f }, { cutoff, 3200 }, { resonance, 0.1f }, { filterEnv, 0.15f },
             { fAttack, 0.6f }, { fDecay, 1.5f }, { fSustain, 0.6f }, { fRelease, 1.2f },
             { aAttack, 0.5f }, { aDecay, 1.0f }, { aSustain, 0.85f }, { aRelease, 1.2f }, { ampVel, 0.2f },
@@ -232,6 +232,9 @@ const std::vector<Preset>& getFactoryPresets()
             { aSustain, 0.9f }, { aRelease, 0.08f }, { delayMix, 0.2f }, { spread, 0.0f },
             { seqMode, S_SEQ }, { seqRate, R_16 }, { seqLength, 9 }, { seqAccLen, 4 }, { seqGateLen, 5 } },
           "0! 12 0 0~ 3 . 0 10?60 -2" },
+
+        // v1.3: 100 presets till (genereras av tools/gen_presets.py).
+        #include "PresetBank.inc"
     };
 
     return presets;

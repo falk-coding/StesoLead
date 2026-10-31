@@ -80,11 +80,11 @@ private:
     std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> comboAttachment;
 };
 
-// Titel skrivs "КИРИЛЛИЦА|Latin".
+// Titel skrivs "SVENSKA|English" (engelskan visas inom parentes).
 class Section : public juce::Component
 {
 public:
-    // title är UTF-8 (kyrilliska).
+    // title är UTF-8 (å, ä, ö).
     Section (const char* titleUtf8, juce::Colour colour);
 
     void add (juce::AudioProcessorValueTreeState& apvts, const juce::String& paramId, const juce::String& label,

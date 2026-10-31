@@ -31,22 +31,23 @@ private:
     juce::TextButton prevButton { "<" }, nextButton { ">" };
     juce::Label voicesLabel;
 
-    steso::ui::Section osc1 { "ГЕНЕРАТОР 1|Osc 1", steso::ui::colours::accent };
-    steso::ui::Section osc2 { "ГЕНЕРАТОР 2|Osc 2", steso::ui::colours::accent };
-    steso::ui::Section osc3 { "ГЕНЕРАТОР 3|Osc 3", steso::ui::colours::accent };
-    steso::ui::Section mixer { "СМЕСИТЕЛЬ|Mixer", steso::ui::colours::accent };
-    steso::ui::Section filter { "ФИЛЬТР|Filter", steso::ui::colours::accent2 };
-    steso::ui::Section filterEnv { "ОГИБАЮЩАЯ ФИЛЬТРА|Filter env", steso::ui::colours::accent2 };
-    steso::ui::Section ampEnv { "УСИЛИТЕЛЬ|Amp env", steso::ui::colours::accent };
-    steso::ui::Section lfo { "ГНЧ|LFO", steso::ui::colours::accent2 };
-    steso::ui::Section voice { "ГОЛОС|Voice", steso::ui::colours::accent };
-    steso::ui::Section fx { "ЭФФЕКТЫ|Effects", steso::ui::colours::accent2 };
-    steso::ui::Section output { "ВЫХОД|Output", steso::ui::colours::accent };
+    steso::ui::Section osc1 { "TONGENERATOR 1|Osc 1", steso::ui::colours::accent };
+    steso::ui::Section osc2 { "TONGENERATOR 2|Osc 2", steso::ui::colours::accent };
+    steso::ui::Section osc3 { "TONGENERATOR 3|Osc 3", steso::ui::colours::accent };
+    steso::ui::Section mixer { "BLANDARE|Mixer", steso::ui::colours::accent };
+    steso::ui::Section filter { "FILTER", steso::ui::colours::accent2 };
+    steso::ui::Section filterEnv { "FILTERKURVA|Filter env", steso::ui::colours::accent2 };
+    steso::ui::Section ampEnv { "VOLYMKURVA|Amp env", steso::ui::colours::accent };
+    steso::ui::Section lfo { "MODULATION|LFO", steso::ui::colours::accent2 };
+    steso::ui::Section voice { "RÖST|Voice", steso::ui::colours::accent };
+    steso::ui::Section fx { "EFFEKTER|Effects", steso::ui::colours::accent2 };
+    steso::ui::Section output { "UTGÅNG|Output", steso::ui::colours::accent };
 
     juce::MidiKeyboardComponent keyboard;
     steso::ui::SeqPanel seqPanel;
 
     juce::Image panelTexture;
+    std::vector<int> presetOrder;   // programnummer i den ordning de visas
     int lastProgramCounter = -1;
     int lastVoices = -1;
 

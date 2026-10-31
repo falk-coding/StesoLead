@@ -21,7 +21,7 @@ Ny release: **Actions → Build → Run workflow** med `release_tag` (t.ex. `v1.
 - LFO (sine, triangle, saw, square, S&H) med fade in → pitch, filter, PWM
 - Analog drift per röst, stereospridning
 - Chorus (Juno-stil I/II), stereodelay med lågpass i återkopplingen, reverb
-- 35 fabrikspresets (varav 5 med sekvenser), skalbart GUI, inbyggd klaviatur
+- 135 fabrikspresets i kategorierna Bass, Lead, Keys, Pad, Brass, Pluck, FX och Sequence (nivåkalibrerade), skalbart GUI, inbyggd klaviatur
 
 ## Fat-motorn (v1.2)
 - **Tre oscillatorer** (som på Minimoog) + sub-oktav + brus. Osc 3 står på -12 halvtoner som standard.
@@ -33,7 +33,7 @@ Ny release: **Actions → Build → Run workflow** med `release_tag` (t.ex. `v1.
 - **2x oversampling** för oscillatorer, filter, feedback och mättning – mindre digital aliasing, varmare drive.
 - 11 nya presets i *Fat Bass*, *Fat Lead*, *Fat Poly* och *Sequence*. Pluginet startar på **Three Osc Lead**.
 - Nya funktioner är avstängda som standard, så äldre presets och projekt låter som förut.
-- **Skin:** sliten sovjetisk apparat – grå plåt med repor, bakelitrattar, kyrilliska sektionsnamn, signallampor i sekvensern.
+- **Skin:** sliten apparat från östblocket – grå plåt med repor, bakelitrattar, signallampor i sekvensern. Sektionsnamn på svenska med engelska inom parentes.
 
 ## Sekvenser / arpeggiator (v1.1)
 - **Seq:** stegen spelas relativt tangenten du håller (transponera live). **Arp:** spelar ackordet du håller
@@ -63,7 +63,8 @@ CPU, röstlägen, sustainpedal och att sparat läge laddas exakt. CI kör dessut
 | Fil | Innehåll |
 |---|---|
 | `Source/Parameters.*` | Alla parametrar (ändra aldrig ett ID – sparade projekt tappar värdet) |
-| `Source/Presets.cpp` | Fabrikspresets |
+| `Source/Presets.cpp` | Fabrikspresets (de första 35) |
+| `tools/gen_presets.py` | Genererar `Source/PresetBank.inc` (100 presets). Nivåer i `tools/levels.json` |
 | `Source/dsp/DspUtils.h` | Oscillator, envelope, ladderfilter |
 | `Source/dsp/SynthEngine.*` | Röster, röststöld, MIDI, LFO |
 | `Source/dsp/Effects.*` | Chorus, delay, reverb |

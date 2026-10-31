@@ -80,7 +80,7 @@ private:
     juce::Slider fromBar { juce::Slider::IncDecButtons, juce::Slider::TextBoxLeft };
     juce::Slider toBar { juce::Slider::IncDecButtons, juce::Slider::TextBoxLeft };
     juce::Label fromLabel, toLabel, rangeInfo, bypassLabel;
-    juce::TextButton reenableButton { juce::String::fromUTF8 ("Slå på igen") };
+    juce::TextButton reenableButton { juce::String::fromUTF8 ("Slå på (Re-enable)") };
 
     juce::Slider euclidHits { juce::Slider::IncDecButtons, juce::Slider::TextBoxLeft };
     juce::Slider euclidRotate { juce::Slider::IncDecButtons, juce::Slider::TextBoxLeft };

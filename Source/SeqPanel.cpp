@@ -236,7 +236,7 @@ void StepGrid::updatePlayhead()
 DragBox::DragBox (StesoLeadProcessor& p) : processor (p)
 {
     setMouseCursor (juce::MouseCursor::DraggingHandCursor);
-    setTooltip (juce::String::fromUTF8 ("Dra till ett MIDI-spår i din DAW. Sekvensern stängs sedan av så att det inte låter dubbelt."));
+    setTooltip (juce::String::fromUTF8 ("Dra till ett MIDI-spår i din DAW. Sekvensern stängs sedan av så att det inte låter dubbelt. (Drag to a MIDI track in your DAW. The sequencer is then switched off to avoid doubled notes.)"));
 }
 
 void DragBox::paint (juce::Graphics& g)
@@ -259,8 +259,11 @@ void DragBox::paint (juce::Graphics& g)
     auto text = r.reduced (12.0f);
     g.setColour (colours::text);
     g.setFont (panelFont (18.0f).withExtraKerningFactor (0.1f));
-    g.drawText (juce::String::fromUTF8 ("⇢  DRA MIDI TILL DAW"), text.removeFromTop (text.getHeight() * 0.5f),
+    g.drawText (juce::String::fromUTF8 ("⇢  DRA MIDI TILL DAW"), text.removeFromTop (text.getHeight() * 0.42f),
                 juce::Justification::centredBottom);
+    g.setColour (colours::dimText);
+    g.setFont (panelFont (12.0f).withExtraKerningFactor (0.1f));
+    g.drawText ("(DRAG MIDI TO DAW)", text.removeFromTop (18.0f), juce::Justification::centred);
     g.setColour (colours::dimText);
     g.setFont (panelFont (13.0f, false));
     g.drawFittedText (range.label, text.toNearestInt().withTrimmedTop (4), juce::Justification::centredTop, 2);
@@ -327,8 +330,8 @@ SeqPanel::SeqPanel (StesoLeadProcessor& p) : processor (p), grid (p), dragBox (p
     dragBox.getRange = [this] { return computeRange(); };
     addAndMakeVisible (dragBox);
 
-    rangeMode.addItem (juce::String::fromUTF8 ("Längd: DAW:ns locators"), 1);
-    rangeMode.addItem (juce::String::fromUTF8 ("Längd: från/till takt"), 2);
+    rangeMode.addItem (juce::String::fromUTF8 ("Längd: DAW:ns locators (length: DAW locators)"), 1);
+    rangeMode.addItem (juce::String::fromUTF8 ("Längd: från/till takt (length: from/to bar)"), 2);
     addAndMakeVisible (rangeMode);
 
     for (auto* s : { &fromBar, &toBar })
@@ -349,12 +352,12 @@ SeqPanel::SeqPanel (StesoLeadProcessor& p) : processor (p), grid (p), dragBox (p
         l.setJustificationType (juce::Justification::centredRight);
         addAndMakeVisible (l);
     };
-    setupLabel (fromLabel, juce::String::fromUTF8 ("Från"));
-    setupLabel (toLabel, "Till");
+    setupLabel (fromLabel, juce::String::fromUTF8 ("Från (From)"));
+    setupLabel (toLabel, "Till (To)");
     setupLabel (hitsLabel, "Hits");
     setupLabel (rotateLabel, "Rot");
 
-    bypassLabel.setText (juce::String::fromUTF8 ("Sekvensern är av – mönstret ligger i DAW:en"), juce::dontSendNotification);
+    bypassLabel.setText (juce::String::fromUTF8 ("Sekvenser av – i DAW:en (sequencer off)"), juce::dontSendNotification);
     bypassLabel.setFont (panelFont (14.0f));
     bypassLabel.setColour (juce::Label::textColourId, colours::lampRed);
     addChildComponent (bypassLabel);
@@ -371,7 +374,7 @@ SeqPanel::SeqPanel (StesoLeadProcessor& p) : processor (p), grid (p), dragBox (p
         addAndMakeVisible (*s);
     }
 
-    euclidButton.setTooltip (juce::String::fromUTF8 ("Sprider Hits jämnt över Steps (euklidisk rytm)"));
+    euclidButton.setTooltip (juce::String::fromUTF8 ("Sprider Hits jämnt över Steps (spreads hits evenly – Euclidean rhythm)"));
     euclidButton.onClick = [this]
     {
         const auto s = processor.currentSeqSettings();
@@ -379,7 +382,7 @@ SeqPanel::SeqPanel (StesoLeadProcessor& p) : processor (p), grid (p), dragBox (p
         markDirty (processor);
         grid.repaint();
     };
-    initButton.setTooltip (juce::String::fromUTF8 ("Återställ mönstret"));
+    initButton.setTooltip (juce::String::fromUTF8 ("Återställ mönstret (reset pattern)"));
     initButton.onClick = [this]
     {
         processor.getPattern().setDefault();
@@ -427,20 +430,20 @@ DragBox::Range SeqPanel::computeRange() const
         r.from = (a - 1.0) * barPpq;
         r.to = (b - 1.0) * barPpq;
         if (rangeMode.getSelectedId() != 2)
-            prefix = juce::String::fromUTF8 ("DAW:n skickar inga locators – använder Från/Till. ");
+            prefix = juce::String::fromUTF8 ("Inga locators från DAW:n (no DAW locators) – Från/Till används. ");
     }
 
     const auto a = formatBar (r.from, barPpq), b = formatBar (r.to, barPpq);
     const double bars = (r.to - r.from) / barPpq;
     const auto barsText = std::abs (bars - std::round (bars)) < 0.01 ? juce::String (juce::roundToInt (bars)) : juce::String (bars, 2);
-    r.label = prefix + juce::String::fromUTF8 ("Takt ") + a + juce::String::fromUTF8 ("–") + b + "  ·  " + barsText + " takter";
-    r.fileName = "StesoLead Takt " + a + "-" + b + ".mid";
+    r.label = prefix + juce::String::fromUTF8 ("Takt ") + a + juce::String::fromUTF8 ("–") + b + "  ·  " + barsText + " takter (bars)";
+    r.fileName = "StesoLead Takt (Bars) " + a + "-" + b + ".mid";
     return r;
 }
 
 void SeqPanel::paint (juce::Graphics& g)
 {
-    drawSectionFrame (g, getLocalBounds().toFloat().reduced (3.0f), juce::String::fromUTF8 ("СЕКВЕНСОР|Sequencer / arp"));
+    drawSectionFrame (g, getLocalBounds().toFloat().reduced (3.0f), juce::String::fromUTF8 ("SEKVENSER|Sequencer / arp"));
 }
 
 void SeqPanel::resized()
@@ -461,10 +464,10 @@ void SeqPanel::resized()
     rangeMode.setBounds (right.removeFromTop (26));
     right.removeFromTop (4);
     auto barsRow = right.removeFromTop (26);
-    fromLabel.setBounds (barsRow.removeFromLeft (40));
-    fromBar.setBounds (barsRow.removeFromLeft (120).reduced (2, 0));
-    toLabel.setBounds (barsRow.removeFromLeft (40));
-    toBar.setBounds (barsRow.removeFromLeft (120).reduced (2, 0));
+    fromLabel.setBounds (barsRow.removeFromLeft (70));
+    fromBar.setBounds (barsRow.removeFromLeft (100).reduced (2, 0));
+    toLabel.setBounds (barsRow.removeFromLeft (64));
+    toBar.setBounds (barsRow.removeFromLeft (100).reduced (2, 0));
 
     auto euclidRow = right.removeFromBottom (26);
     hitsLabel.setBounds (euclidRow.removeFromLeft (36));
@@ -478,7 +481,7 @@ void SeqPanel::resized()
     right.removeFromBottom (4);
 
     auto bypassRow = right.removeFromBottom (26);
-    reenableButton.setBounds (bypassRow.removeFromRight (96));
+    reenableButton.setBounds (bypassRow.removeFromRight (130));
     bypassLabel.setBounds (bypassRow);
     right.removeFromBottom (4);
     right.removeFromTop (6);
