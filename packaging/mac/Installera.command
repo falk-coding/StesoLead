@@ -13,7 +13,6 @@ rm -rf "$VST3_DIR/StesoLead.vst3" "$AU_DIR/StesoLead.component"
 cp -R StesoLead.vst3 "$VST3_DIR/"
 cp -R StesoLead.component "$AU_DIR/"
 xattr -dr com.apple.quarantine "$VST3_DIR/StesoLead.vst3" "$AU_DIR/StesoLead.component" 2>/dev/null || true
-xattr -dr com.apple.quarantine StesoLead.app 2>/dev/null || true
 
 # Låt macOS läsa in AU-pluginet på nytt.
 killall -9 AudioComponentRegistrar 2>/dev/null || true
@@ -23,7 +22,7 @@ echo "Klart!"
 echo "  VST3: $VST3_DIR/StesoLead.vst3"
 echo "  AU:   $AU_DIR/StesoLead.component"
 echo ""
-echo "Starta om Reason. StesoLead finns under Instruments → Falk → StesoLead."
-echo "Den fristående appen (StesoLead.app) kan startas direkt härifrån."
+echo "Starta om din DAW. StesoLead finns under Instruments → Falk → StesoLead."
+echo "Logic/GarageBand använder AU, övriga (Reason, Ableton, Cubase …) VST3."
 echo ""
 read -n 1 -s -r -p "Tryck på valfri tangent för att stänga."

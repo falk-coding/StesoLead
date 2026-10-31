@@ -14,7 +14,7 @@ och starta om din DAW.
 Varför varnar Windows? Pluginet är inte signerat med ett betalt kodsigneringscertifikat.
 Det påverkar inte funktionen.
 
-Fristående app: StesoLead.exe fungerar utan DAW (välj ljudkort och MIDI under Options).
+Fungerar i alla DAW:ar med VST3 (Reason, Ableton, Cubase, FL Studio, Bitwig, Studio One, Reaper m.fl.).
 
 Tips i pluginet:
 - Dubbelklicka på en ratt = tillbaka till standardvärdet.

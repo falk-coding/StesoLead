@@ -26,7 +26,7 @@ else()
     FetchContent_MakeAvailable(juce)
 endif()
 
-set(STESO_FORMATS VST3 Standalone)
+set(STESO_FORMATS VST3)
 if(APPLE)
     list(APPEND STESO_FORMATS AU)
 endif()

@@ -27,6 +27,5 @@ echo Klart! StesoLead ar installerat i:
 echo   %DST%
 echo.
 echo Starta om din DAW (t.ex. Reason). StesoLead finns under Instruments - Falk.
-echo Den fristaende appen StesoLead.exe kan startas direkt fran zip-mappen.
 echo.
 pause

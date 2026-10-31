@@ -67,7 +67,7 @@ jobs:
           retention-days: 14
 
   macos:
-    name: macOS – VST3, AU och fristående app
+    name: macOS – VST3 och AU
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
@@ -86,7 +86,7 @@ jobs:
       - name: Signera ad hoc
         run: |
           A=build/StesoLead_artefacts/Release
-          for b in "$A/VST3/StesoLead.vst3" "$A/AU/StesoLead.component" "$A/Standalone/StesoLead.app"; do
+          for b in "$A/VST3/StesoLead.vst3" "$A/AU/StesoLead.component"; do
             codesign --force --deep --sign - "$b"
             codesign --verify --verbose "$b"
           done
@@ -110,7 +110,7 @@ jobs:
           A=build/StesoLead_artefacts/Release
           P=StesoLead-mac
           mkdir -p "$P"
-          cp -R "$A/VST3/StesoLead.vst3" "$A/AU/StesoLead.component" "$A/Standalone/StesoLead.app" "$P/"
+          cp -R "$A/VST3/StesoLead.vst3" "$A/AU/StesoLead.component" "$P/"
           cp packaging/mac/Installera.command packaging/mac/INSTALLERA.txt "$P/"
           chmod +x "$P/Installera.command"
           ditto -c -k --sequesterRsrc --keepParent "$P" StesoLead-mac.zip
@@ -137,7 +137,7 @@ jobs:
             (godkänn administratörsfrågan). Starta om din DAW.
 
   windows:
-    name: Windows – VST3 och fristående app
+    name: Windows – VST3
     runs-on: windows-2022
     steps:
       - uses: actions/checkout@v4
@@ -169,7 +169,6 @@ jobs:
           $P = "StesoLead-windows"
           New-Item -ItemType Directory -Force -Path $P | Out-Null
           Copy-Item -Recurse "$A/VST3/StesoLead.vst3" "$P/"
-          Copy-Item "$A/Standalone/StesoLead.exe" "$P/"
           Copy-Item packaging/windows/INSTALLERA.txt, packaging/windows/Installera.bat "$P/"
           Compress-Archive -Path $P -DestinationPath StesoLead-windows.zip
 

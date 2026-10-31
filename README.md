@@ -23,6 +23,9 @@ Ny release: **Actions → Build → Run workflow** med `release_tag` (t.ex. `v1.
 - Chorus (Juno-stil I/II), stereodelay med lågpass i återkopplingen, reverb
 - 20 fabrikspresets, skalbart GUI, inbyggd klaviatur
 
+**Format:** VST3 (Mac + Windows) och AU (Mac). Fungerar i Reason, Ableton, Cubase, FL Studio, Bitwig,
+Studio One, Reaper, Logic och GarageBand. Pro Tools (AAX) stöds inte – kräver avtal och betald signering hos Avid.
+
 ## Utveckling
 ```bash
 cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release   # -DJUCE_DIR=<lokal JUCE> för att slippa nedladdning

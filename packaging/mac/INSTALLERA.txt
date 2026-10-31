@@ -17,7 +17,7 @@ Manuellt (om du hellre vill):
 Varför behövs steg 2? Pluginet är inte signerat med ett betalt Apple-utvecklarkonto,
 så macOS spärrar filer som laddats ner från internet tills spärren tas bort.
 
-Fristående app: StesoLead.app fungerar utan Reason (välj ljudkort och MIDI under Options).
+Format: Logic och GarageBand använder AU (.component), övriga DAW:ar VST3 (.vst3). Båda installeras.
 
 Tips i pluginet:
 - Dubbelklicka på en ratt = tillbaka till standardvärdet.
