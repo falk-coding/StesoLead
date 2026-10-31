@@ -160,8 +160,9 @@ juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout()
     seqGroup->addChild (std::make_unique<API> (id (pid::seqLength), "Seq Steps", 1, seq::maxSteps, 16));
     seqGroup->addChild (std::make_unique<API> (id (pid::seqAccLen), "Accent Steps", 1, seq::maxSteps, 16));
     seqGroup->addChild (std::make_unique<API> (id (pid::seqGateLen), "Gate Steps", 1, seq::maxSteps, 16));
-    seqGroup->addChild (std::make_unique<juce::AudioParameterBool> (id (pid::seqLatch), "Seq Latch", true));
-    seqGroup->addChild (std::make_unique<juce::AudioParameterBool> (id (pid::seqMidiOut), "Seq MIDI Out", false));
+    // Av/på som valparametrar: AudioParameterBool återställs inte exakt från sparat läge (pluginval).
+    seqGroup->addChild (std::make_unique<APC> (id (pid::seqLatch), "Seq Latch", juce::StringArray { "Off", "On" }, 1));
+    seqGroup->addChild (std::make_unique<APC> (id (pid::seqMidiOut), "Seq MIDI Out", juce::StringArray { "Off", "On" }, 0));
 
     layout.add (std::move (osc1), std::move (osc2), std::move (mix), std::move (filter), std::move (fenv),
                 std::move (aenv), std::move (lfo), std::move (voice), std::move (fx), std::move (seqGroup));

@@ -252,6 +252,24 @@ void testState()
         check (other != nullptr && std::abs (other->getValue() - rp->getValue()) < 1.0e-6f,
                "parametern " + rp->getParameterID() + " återställs inte");
     }
+    // Som pluginval: slumpade (även "mellanliggande") normaliserade värden på alla parametrar.
+    juce::Random rnd (1234);
+    for (auto* p : a->getParameters())
+        p->setValueNotifyingHost (rnd.nextFloat());
+    std::vector<float> saved;
+    for (auto* p : a->getParameters())
+        saved.push_back (p->getValue());
+    juce::MemoryBlock fuzzState;
+    a->getStateInformation (fuzzState);
+    for (auto* p : a->getParameters())
+        p->setValueNotifyingHost (rnd.nextFloat());
+    a->setStateInformation (fuzzState.getData(), (int) fuzzState.getSize());
+    for (size_t i = 0; i < saved.size(); ++i)
+    {
+        auto* p = a->getParameters()[(int) i];
+        check (std::abs (p->getValue() - saved[i]) < 0.1f, p->getName (32) + " återställs inte från sparat läge (som pluginval)");
+    }
+
     std::cout << "  " << a->getParameters().size() << " parametrar kontrollerade" << std::endl;
 }
 
