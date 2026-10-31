@@ -31,21 +31,22 @@ private:
     juce::TextButton prevButton { "<" }, nextButton { ">" };
     juce::Label voicesLabel;
 
-    steso::ui::Section osc1 { "OSC 1", steso::ui::colours::accent };
-    steso::ui::Section osc2 { "OSC 2", steso::ui::colours::accent };
-    steso::ui::Section osc3 { "OSC 3", steso::ui::colours::accent };
-    steso::ui::Section mixer { "MIXER", steso::ui::colours::accent };
-    steso::ui::Section filter { "FILTER", steso::ui::colours::accent2 };
-    steso::ui::Section filterEnv { "FILTER ENV", steso::ui::colours::accent2 };
-    steso::ui::Section ampEnv { "AMP ENV", steso::ui::colours::accent };
-    steso::ui::Section lfo { "LFO", steso::ui::colours::accent2 };
-    steso::ui::Section voice { "VOICE", steso::ui::colours::accent };
-    steso::ui::Section fx { "EFFECTS", steso::ui::colours::accent2 };
-    steso::ui::Section output { "OUTPUT", steso::ui::colours::accent };
+    steso::ui::Section osc1 { "ГЕНЕРАТОР 1|Osc 1", steso::ui::colours::accent };
+    steso::ui::Section osc2 { "ГЕНЕРАТОР 2|Osc 2", steso::ui::colours::accent };
+    steso::ui::Section osc3 { "ГЕНЕРАТОР 3|Osc 3", steso::ui::colours::accent };
+    steso::ui::Section mixer { "СМЕСИТЕЛЬ|Mixer", steso::ui::colours::accent };
+    steso::ui::Section filter { "ФИЛЬТР|Filter", steso::ui::colours::accent2 };
+    steso::ui::Section filterEnv { "ОГИБАЮЩАЯ ФИЛЬТРА|Filter env", steso::ui::colours::accent2 };
+    steso::ui::Section ampEnv { "УСИЛИТЕЛЬ|Amp env", steso::ui::colours::accent };
+    steso::ui::Section lfo { "ГНЧ|LFO", steso::ui::colours::accent2 };
+    steso::ui::Section voice { "ГОЛОС|Voice", steso::ui::colours::accent };
+    steso::ui::Section fx { "ЭФФЕКТЫ|Effects", steso::ui::colours::accent2 };
+    steso::ui::Section output { "ВЫХОД|Output", steso::ui::colours::accent };
 
     juce::MidiKeyboardComponent keyboard;
     steso::ui::SeqPanel seqPanel;
 
+    juce::Image panelTexture;
     int lastProgramCounter = -1;
     int lastVoices = -1;
 

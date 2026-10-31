@@ -1,110 +1,312 @@
 #include "PluginEditor.h"
+#include <BinaryData.h>
 
 namespace steso::ui
 {
 //==============================================================================
+juce::Font panelFont (float height, bool bold)
+{
+    static juce::Typeface::Ptr boldFace = juce::Typeface::createSystemTypefaceFor (
+        StesoAssets::PT_SansNarrowWebBold_ttf, (size_t) StesoAssets::PT_SansNarrowWebBold_ttfSize);
+    static juce::Typeface::Ptr regularFace = juce::Typeface::createSystemTypefaceFor (
+        StesoAssets::PT_SansNarrowWebRegular_ttf, (size_t) StesoAssets::PT_SansNarrowWebRegular_ttfSize);
+    return juce::Font (juce::FontOptions (bold ? boldFace : regularFace).withHeight (height));
+}
+
+void drawEngravedBox (juce::Graphics& g, juce::Rectangle<float> r, float alpha)
+{
+    g.setColour (colours::engraveDark.withAlpha (0.9f * alpha));
+    g.drawLine (r.getX(), r.getY(), r.getRight(), r.getY(), 1.2f);
+    g.drawLine (r.getX(), r.getY(), r.getX(), r.getBottom(), 1.2f);
+    g.setColour (colours::engraveLight.withAlpha (0.55f * alpha));
+    g.drawLine (r.getX() + 1.0f, r.getBottom(), r.getRight(), r.getBottom(), 1.0f);
+    g.drawLine (r.getRight(), r.getY() + 1.0f, r.getRight(), r.getBottom(), 1.0f);
+}
+
+void drawScrew (juce::Graphics& g, juce::Point<float> c, float radius, float slotAngle)
+{
+    g.setColour (colours::engraveDark.withAlpha (0.8f));
+    g.fillEllipse (c.x - radius - 1.0f, c.y - radius - 1.0f, radius * 2.0f + 2.0f, radius * 2.0f + 2.0f);
+    g.setGradientFill (juce::ColourGradient (juce::Colour (0xff8a8a82), c.x - radius, c.y - radius,
+                                             juce::Colour (0xff3e3e3a), c.x + radius, c.y + radius, false));
+    g.fillEllipse (c.x - radius, c.y - radius, radius * 2.0f, radius * 2.0f);
+    juce::Path slot;
+    slot.addRectangle (-radius * 0.85f, -0.9f, radius * 1.7f, 1.8f);
+    g.setColour (juce::Colour (0xff1c1c1a));
+    g.fillPath (slot, juce::AffineTransform::rotation (slotAngle).translated (c.x, c.y));
+}
+
+void drawLamp (juce::Graphics& g, juce::Rectangle<float> r, juce::Colour lit, juce::Colour off, bool on, float alpha)
+{
+    const auto c = r.getCentre();
+    const float rad = std::min (r.getWidth(), r.getHeight()) * 0.5f;
+    // Infattning
+    g.setColour (juce::Colour (0xff0e0e0d).withAlpha (alpha));
+    g.fillEllipse (c.x - rad, c.y - rad, rad * 2.0f, rad * 2.0f);
+    const float lr = rad * 0.72f;
+    if (on)
+    {
+        g.setGradientFill (juce::ColourGradient (lit.brighter (0.6f).withAlpha (alpha), c.x - lr * 0.3f, c.y - lr * 0.3f,
+                                                 lit.darker (0.5f).withAlpha (alpha), c.x + lr, c.y + lr, true));
+        g.fillEllipse (c.x - lr, c.y - lr, lr * 2.0f, lr * 2.0f);
+        g.setColour (lit.withAlpha (0.18f * alpha));
+        g.fillEllipse (c.x - rad * 1.25f, c.y - rad * 1.25f, rad * 2.5f, rad * 2.5f);
+    }
+    else
+    {
+        g.setGradientFill (juce::ColourGradient (off.brighter (0.25f).withAlpha (alpha), c.x - lr * 0.3f, c.y - lr * 0.3f,
+                                                 off.darker (0.4f).withAlpha (alpha), c.x + lr, c.y + lr, true));
+        g.fillEllipse (c.x - lr, c.y - lr, lr * 2.0f, lr * 2.0f);
+    }
+    // Glasreflex
+    g.setColour (juce::Colours::white.withAlpha ((on ? 0.35f : 0.12f) * alpha));
+    g.fillEllipse (c.x - lr * 0.5f, c.y - lr * 0.6f, lr * 0.5f, lr * 0.35f);
+}
+
+void drawSectionFrame (juce::Graphics& g, juce::Rectangle<float> r, const juce::String& title)
+{
+    // Lätt nedsänkt fält i plåten.
+    g.setColour (juce::Colours::black.withAlpha (0.16f));
+    g.fillRect (r);
+    drawEngravedBox (g, r);
+
+    const auto cyr = title.upToFirstOccurrenceOf ("|", false, false);
+    const auto lat = title.fromFirstOccurrenceOf ("|", false, false);
+
+    auto header = r.removeFromTop (24.0f).reduced (10.0f, 0.0f).withTrimmedTop (3.0f);
+    const auto f1 = panelFont (15.0f).withExtraKerningFactor (0.08f);
+    g.setFont (f1);
+    g.setColour (colours::text);
+    g.drawText (cyr, header, juce::Justification::centredLeft);
+    float x = header.getX() + juce::GlyphArrangement::getStringWidth (f1, cyr) + 8.0f;
+
+    if (lat.isNotEmpty())
+    {
+        const auto f2 = panelFont (11.0f, false).withExtraKerningFactor (0.1f);
+        g.setFont (f2);
+        g.setColour (colours::dimText);
+        g.drawText (lat.toUpperCase(), juce::Rectangle<float> (x, header.getY() + 1.0f, 200.0f, header.getHeight()),
+                    juce::Justification::centredLeft);
+        x += juce::GlyphArrangement::getStringWidth (f2, lat.toUpperCase()) + 8.0f;
+    }
+
+    // Graverad linje ut till högerkanten.
+    const float ly = header.getCentreY() + 1.0f;
+    if (x < header.getRight() - 4.0f)
+    {
+        g.setColour (colours::engraveDark.withAlpha (0.7f));
+        g.drawLine (x, ly, header.getRight(), ly, 1.0f);
+        g.setColour (colours::engraveLight.withAlpha (0.35f));
+        g.drawLine (x, ly + 1.0f, header.getRight(), ly + 1.0f, 1.0f);
+    }
+}
+
+juce::Image makePanelTexture (int w, int h)
+{
+    juce::Image img (juce::Image::RGB, w, h, false);
+    juce::Random rnd (19611961);   // fast frö: samma slitage varje gång
+
+    {
+        juce::Image::BitmapData data (img, juce::Image::BitmapData::writeOnly);
+        const auto base = colours::metal;
+        for (int y = 0; y < h; ++y)
+        {
+            // Svaga horisontella slipspår + korn.
+            const float streak = (float) (rnd.nextInt (9) - 4) * 0.6f;
+            for (int x = 0; x < w; ++x)
+            {
+                const float n = (rnd.nextFloat() - 0.5f) * 14.0f + streak;
+                const auto px = juce::Colour::fromRGB ((juce::uint8) juce::jlimit (0, 255, (int) (base.getRed() + n)),
+                                                       (juce::uint8) juce::jlimit (0, 255, (int) (base.getGreen() + n)),
+                                                       (juce::uint8) juce::jlimit (0, 255, (int) (base.getBlue() + n * 0.9f)));
+                data.setPixelColour (x, y, px);
+            }
+        }
+    }
+
+    juce::Graphics g (img);
+
+    // Fläckar och smuts.
+    for (int i = 0; i < 120; ++i)
+    {
+        const float cx = rnd.nextFloat() * (float) w, cy = rnd.nextFloat() * (float) h;
+        const float rad = 20.0f + rnd.nextFloat() * 140.0f;
+        const bool dark = rnd.nextFloat() < 0.7f;
+        const auto col = dark ? juce::Colour (0xff17140f) : juce::Colour (0xff6d6a5e);
+        g.setGradientFill (juce::ColourGradient (col.withAlpha (0.07f + rnd.nextFloat() * 0.12f), cx, cy,
+                                                 col.withAlpha (0.0f), cx + rad, cy, true));
+        g.fillEllipse (cx - rad, cy - rad * 0.7f, rad * 2.0f, rad * 1.4f);
+    }
+
+    // Repor.
+    for (int i = 0; i < 450; ++i)
+    {
+        const float x1 = rnd.nextFloat() * (float) w, y1 = rnd.nextFloat() * (float) h;
+        const float len = 4.0f + std::pow (rnd.nextFloat(), 2.0f) * 90.0f;
+        const float ang = rnd.nextFloat() * juce::MathConstants<float>::twoPi;
+        const bool light = rnd.nextFloat() < 0.75f;
+        g.setColour ((light ? juce::Colour (0xffb9b6a8) : juce::Colour (0xff0f0f0d)).withAlpha (0.05f + rnd.nextFloat() * 0.12f));
+        g.drawLine (x1, y1, x1 + std::cos (ang) * len, y1 + std::sin (ang) * len, 0.6f + rnd.nextFloat() * 0.6f);
+    }
+
+    // Avnött kant och smuts i hörnen.
+    const auto r = juce::Rectangle<float> (0.0f, 0.0f, (float) w, (float) h);
+    juce::ColourGradient vignette (juce::Colours::transparentBlack, r.getCentreX(), r.getCentreY(),
+                                   juce::Colour (0xff0b0a08).withAlpha (0.45f), 0.0f, 0.0f, true);
+    g.setGradientFill (vignette);
+    g.fillRect (r);
+    return img;
+}
+
+//==============================================================================
 LookAndFeel::LookAndFeel()
 {
-    setColour (juce::ComboBox::backgroundColourId, colours::knobBody);
-    setColour (juce::ComboBox::outlineColourId, colours::panelEdge);
+    setColour (juce::ComboBox::backgroundColourId, colours::bakelite);
+    setColour (juce::ComboBox::outlineColourId, colours::engraveDark);
     setColour (juce::ComboBox::textColourId, colours::text);
     setColour (juce::ComboBox::arrowColourId, colours::dimText);
-    setColour (juce::PopupMenu::backgroundColourId, colours::panel);
+    setColour (juce::PopupMenu::backgroundColourId, colours::metalDark);
     setColour (juce::PopupMenu::textColourId, colours::text);
-    setColour (juce::PopupMenu::highlightedBackgroundColourId, colours::accent.withAlpha (0.85f));
-    setColour (juce::PopupMenu::highlightedTextColourId, colours::background);
-    setColour (juce::PopupMenu::headerTextColourId, colours::accent2);
+    setColour (juce::PopupMenu::highlightedBackgroundColourId, colours::lampAmber.withAlpha (0.85f));
+    setColour (juce::PopupMenu::highlightedTextColourId, colours::bakelite);
+    setColour (juce::PopupMenu::headerTextColourId, colours::lampAmber);
     setColour (juce::Label::textColourId, colours::text);
-    setColour (juce::TextButton::buttonColourId, colours::knobBody);
+    setColour (juce::TextButton::buttonColourId, colours::metal);
     setColour (juce::TextButton::textColourOffId, colours::text);
-    setColour (juce::BubbleComponent::backgroundColourId, colours::background.withAlpha (0.95f));
-    setColour (juce::BubbleComponent::outlineColourId, colours::accent);
+    setColour (juce::TextButton::textColourOnId, colours::text);
+    setColour (juce::Slider::textBoxBackgroundColourId, colours::bakelite);
+    setColour (juce::Slider::textBoxTextColourId, colours::text);
+    setColour (juce::Slider::textBoxOutlineColourId, colours::engraveDark);
+    setColour (juce::BubbleComponent::backgroundColourId, colours::bakelite.withAlpha (0.95f));
+    setColour (juce::BubbleComponent::outlineColourId, colours::dimText);
+    setColour (juce::TooltipWindow::backgroundColourId, colours::bakelite);
     setColour (juce::TooltipWindow::textColourId, colours::text);
+    setColour (juce::TooltipWindow::outlineColourId, colours::dimText);
+}
+
+juce::Typeface::Ptr LookAndFeel::getTypefaceForFont (const juce::Font& f)
+{
+    return panelFont (f.getHeight(), f.isBold()).getTypefacePtr();
 }
 
 void LookAndFeel::drawRotarySlider (juce::Graphics& g, int x, int y, int width, int height, float pos,
                                     float startAngle, float endAngle, juce::Slider& slider)
 {
-    const auto bounds = juce::Rectangle<float> ((float) x, (float) y, (float) width, (float) height).reduced (4.0f);
+    const auto bounds = juce::Rectangle<float> ((float) x, (float) y, (float) width, (float) height).reduced (2.0f);
     const float radius = std::min (bounds.getWidth(), bounds.getHeight()) * 0.5f;
-    const auto centre = bounds.getCentre();
-    const float trackWidth = std::max (2.5f, radius * 0.13f);
-    const float arcRadius = radius - trackWidth * 0.5f;
+    const auto c = bounds.getCentre();
     const float angle = startAngle + pos * (endAngle - startAngle);
-    const auto colour = slider.findColour (juce::Slider::rotarySliderFillColourId);
 
-    // Spår
-    juce::Path track;
-    track.addCentredArc (centre.x, centre.y, arcRadius, arcRadius, 0.0f, startAngle, endAngle, true);
-    g.setColour (colours::background);
-    g.strokePath (track, juce::PathStrokeType (trackWidth, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
-
-    // Värdebåge (bipolära parametrar ritas från mitten)
+    // Skalstreck målade på plåten (0–10).
     const bool bipolar = slider.getMinimum() < 0.0 && juce::approximatelyEqual (slider.getMinimum(), -slider.getMaximum());
-    const float from = bipolar ? (startAngle + endAngle) * 0.5f : startAngle;
-    juce::Path value;
-    value.addCentredArc (centre.x, centre.y, arcRadius, arcRadius, 0.0f, std::min (from, angle), std::max (from, angle), true);
-    g.setColour (colour);
-    g.strokePath (value, juce::PathStrokeType (trackWidth, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+    for (int i = 0; i <= 10; ++i)
+    {
+        const float a = startAngle + (endAngle - startAngle) * (float) i / 10.0f;
+        const bool major = i == 0 || i == 10 || (bipolar && i == 5);
+        const float r1 = radius * (major ? 0.80f : 0.86f), r2 = radius * 0.97f;
+        g.setColour (colours::text.withAlpha (major ? 0.85f : 0.5f));
+        g.drawLine (c.x + std::sin (a) * r1, c.y - std::cos (a) * r1, c.x + std::sin (a) * r2, c.y - std::cos (a) * r2,
+                    major ? 1.6f : 1.1f);
+    }
 
-    // Rattkropp
-    const float bodyRadius = arcRadius - trackWidth * 1.3f;
-    g.setGradientFill (juce::ColourGradient (colours::knobBody.brighter (0.25f), centre.x, centre.y - bodyRadius,
-                                             colours::knobBody.darker (0.4f), centre.x, centre.y + bodyRadius, false));
-    g.fillEllipse (centre.x - bodyRadius, centre.y - bodyRadius, bodyRadius * 2.0f, bodyRadius * 2.0f);
-    g.setColour (colours::panelEdge.brighter (0.2f));
-    g.drawEllipse (centre.x - bodyRadius, centre.y - bodyRadius, bodyRadius * 2.0f, bodyRadius * 2.0f, 1.0f);
+    // Skugga under ratten.
+    const float skirt = radius * 0.74f;
+    g.setColour (juce::Colours::black.withAlpha (0.45f));
+    g.fillEllipse (c.x - skirt + 1.5f, c.y - skirt + 2.5f, skirt * 2.0f, skirt * 2.0f);
 
-    // Visare
+    // Kjol (räfflad bakelit).
+    g.setGradientFill (juce::ColourGradient (juce::Colour (0xff3a3a36), c.x - skirt, c.y - skirt,
+                                             juce::Colour (0xff0c0c0b), c.x + skirt, c.y + skirt, false));
+    g.fillEllipse (c.x - skirt, c.y - skirt, skirt * 2.0f, skirt * 2.0f);
+    g.setColour (juce::Colours::black.withAlpha (0.5f));
+    for (int i = 0; i < 24; ++i)
+    {
+        const float a = angle + juce::MathConstants<float>::twoPi * (float) i / 24.0f;
+        g.drawLine (c.x + std::sin (a) * skirt * 0.86f, c.y - std::cos (a) * skirt * 0.86f,
+                    c.x + std::sin (a) * skirt, c.y - std::cos (a) * skirt, 1.0f);
+    }
+
+    // Topp
+    const float cap = skirt * 0.72f;
+    g.setGradientFill (juce::ColourGradient (juce::Colour (0xff2c2c29), c.x - cap * 0.5f, c.y - cap,
+                                             colours::bakelite, c.x + cap * 0.4f, c.y + cap, false));
+    g.fillEllipse (c.x - cap, c.y - cap, cap * 2.0f, cap * 2.0f);
+    g.setColour (juce::Colours::white.withAlpha (0.06f));
+    g.drawEllipse (c.x - cap, c.y - cap, cap * 2.0f, cap * 2.0f, 1.0f);
+
+    // Visare: vit målad linje från toppen ut över kjolen.
     juce::Path pointer;
-    const float pointerLength = bodyRadius * 0.75f;
-    pointer.addRoundedRectangle (-1.5f, -bodyRadius + 2.0f, 3.0f, pointerLength, 1.5f);
+    pointer.addRectangle (-1.3f, -skirt * 0.98f, 2.6f, skirt * 0.62f);
     g.setColour (colours::text);
-    g.fillPath (pointer, juce::AffineTransform::rotation (angle).translated (centre.x, centre.y));
+    g.fillPath (pointer, juce::AffineTransform::rotation (angle).translated (c.x, c.y));
 }
 
-void LookAndFeel::drawComboBox (juce::Graphics& g, int width, int height, bool, int, int, int, int, juce::ComboBox& box)
+void LookAndFeel::drawComboBox (juce::Graphics& g, int width, int height, bool, int, int, int, int, juce::ComboBox&)
 {
-    const auto r = juce::Rectangle<float> (0.0f, 0.0f, (float) width, (float) height).reduced (0.5f);
-    g.setColour (box.findColour (juce::ComboBox::backgroundColourId));
-    g.fillRoundedRectangle (r, 5.0f);
-    g.setColour (box.hasKeyboardFocus (false) ? colours::accent : box.findColour (juce::ComboBox::outlineColourId));
-    g.drawRoundedRectangle (r, 5.0f, 1.0f);
+    const auto r = juce::Rectangle<float> (0.0f, 0.0f, (float) width, (float) height);
+    g.setColour (colours::bakelite);
+    g.fillRect (r.reduced (1.0f));
+    drawEngravedBox (g, r.reduced (0.5f));
 
     juce::Path arrow;
-    const float ax = (float) width - 14.0f, ay = (float) height * 0.5f;
-    arrow.addTriangle (ax - 4.0f, ay - 2.0f, ax + 4.0f, ay - 2.0f, ax, ay + 3.0f);
+    const float ax = (float) width - 11.0f, ay = (float) height * 0.5f;
+    arrow.addTriangle (ax - 3.5f, ay - 2.0f, ax + 3.5f, ay - 2.0f, ax, ay + 3.0f);
     g.setColour (colours::dimText);
     g.fillPath (arrow);
 }
 
+void LookAndFeel::positionComboBoxText (juce::ComboBox& box, juce::Label& label)
+{
+    label.setBounds (4, 1, box.getWidth() - 18, box.getHeight() - 2);
+    label.setFont (getComboBoxFont (box));
+}
+
 juce::Font LookAndFeel::getComboBoxFont (juce::ComboBox&)
 {
-    return juce::Font (juce::FontOptions (14.0f));
+    return panelFont (14.5f).withExtraKerningFactor (0.04f);
 }
 
 juce::Font LookAndFeel::getPopupMenuFont()
 {
-    return juce::Font (juce::FontOptions (15.0f));
+    return panelFont (16.0f, false);
+}
+
+juce::Font LookAndFeel::getTextButtonFont (juce::TextButton&, int buttonHeight)
+{
+    return panelFont (std::min (15.0f, (float) buttonHeight * 0.62f));
 }
 
 void LookAndFeel::drawButtonBackground (juce::Graphics& g, juce::Button& b, const juce::Colour&, bool highlighted, bool down)
 {
-    auto r = b.getLocalBounds().toFloat().reduced (0.5f);
-    g.setColour (down ? colours::accent : (highlighted ? colours::knobBody.brighter (0.2f) : colours::knobBody));
-    g.fillRoundedRectangle (r, 5.0f);
-    g.setColour (colours::panelEdge);
-    g.drawRoundedRectangle (r, 5.0f, 1.0f);
+    auto r = b.getLocalBounds().toFloat().reduced (1.0f);
+    g.setGradientFill (juce::ColourGradient (down ? colours::metalDark : colours::metal.brighter (highlighted ? 0.18f : 0.08f),
+                                             r.getX(), r.getY(),
+                                             down ? colours::metal : colours::metalDark, r.getX(), r.getBottom(), false));
+    g.fillRect (r);
+    // Upphöjd knapp: ljus kant upptill, mörk nedtill (omvänt när den trycks ner).
+    g.setColour ((down ? colours::engraveDark : colours::engraveLight).withAlpha (0.8f));
+    g.drawLine (r.getX(), r.getY(), r.getRight(), r.getY(), 1.0f);
+    g.setColour ((down ? colours::engraveLight : colours::engraveDark).withAlpha (0.9f));
+    g.drawLine (r.getX(), r.getBottom(), r.getRight(), r.getBottom(), 1.2f);
+    g.setColour (colours::engraveDark);
+    g.drawRect (r.expanded (0.5f), 1.0f);
+}
+
+void LookAndFeel::drawPopupMenuBackground (juce::Graphics& g, int width, int height)
+{
+    g.fillAll (colours::metalDark);
+    g.setColour (colours::engraveLight.withAlpha (0.6f));
+    g.drawRect (0, 0, width, height, 1);
 }
 
 //==============================================================================
 Control::Control (juce::AudioProcessorValueTreeState& apvts, const juce::String& paramId, const juce::String& text,
                   juce::Colour colour, bool isChoice)
 {
-    label.setText (text, juce::dontSendNotification);
+    label.setText (text.toUpperCase(), juce::dontSendNotification);
     label.setJustificationType (juce::Justification::centred);
-    label.setFont (juce::Font (juce::FontOptions (12.5f)));
-    label.setColour (juce::Label::textColourId, colours::dimText);
+    label.setFont (panelFont (12.0f).withExtraKerningFactor (0.08f));
+    label.setColour (juce::Label::textColourId, colours::text.withAlpha (0.85f));
     label.setInterceptsMouseClicks (false, false);
     addAndMakeVisible (label);
 
@@ -139,7 +341,7 @@ Control::Control (juce::AudioProcessorValueTreeState& apvts, const juce::String&
 void Control::resized()
 {
     auto r = getLocalBounds();
-    auto labelArea = r.removeFromBottom (18);
+    auto labelArea = r.removeFromBottom (17);
     label.setBounds (labelArea);
 
     if (slider != nullptr)
@@ -149,12 +351,12 @@ void Control::resized()
     }
     else if (combo != nullptr)
     {
-        combo->setBounds (r.withSizeKeepingCentre (std::min (r.getWidth() - 4, 96), 26));
+        combo->setBounds (r.withSizeKeepingCentre (std::min (r.getWidth() - 4, 104), 24));
     }
 }
 
 //==============================================================================
-Section::Section (juce::String t, juce::Colour c) : title (std::move (t)), colour (c) {}
+Section::Section (const char* t, juce::Colour c) : title (juce::String::fromUTF8 (t)), colour (c) {}
 
 void Section::add (juce::AudioProcessorValueTreeState& apvts, const juce::String& paramId, const juce::String& label,
                    bool isChoice)
@@ -165,18 +367,7 @@ void Section::add (juce::AudioProcessorValueTreeState& apvts, const juce::String
 
 void Section::paint (juce::Graphics& g)
 {
-    auto r = getLocalBounds().toFloat().reduced (3.0f);
-    g.setColour (colours::panel);
-    g.fillRoundedRectangle (r, 8.0f);
-    g.setColour (colours::panelEdge);
-    g.drawRoundedRectangle (r, 8.0f, 1.0f);
-
-    auto header = r.removeFromTop (24.0f).reduced (10.0f, 0.0f);
-    g.setColour (colour);
-    g.fillRoundedRectangle (header.getX(), header.getCentreY() - 1.0f, 4.0f, 4.0f, 2.0f);
-    g.setColour (colours::text.withAlpha (0.9f));
-    g.setFont (juce::Font (juce::FontOptions (13.0f, juce::Font::bold)).withExtraKerningFactor (0.12f));
-    g.drawText (title, header.withTrimmedLeft (10.0f), juce::Justification::centredLeft);
+    drawSectionFrame (g, getLocalBounds().toFloat().reduced (3.0f), title);
 }
 
 void Section::resized()
@@ -298,16 +489,22 @@ StesoLeadEditor::StesoLeadEditor (StesoLeadProcessor& p)
 
     voicesLabel.setJustificationType (juce::Justification::centredRight);
     voicesLabel.setColour (juce::Label::textColourId, steso::ui::colours::dimText);
-    voicesLabel.setFont (juce::Font (juce::FontOptions (13.0f)));
+    voicesLabel.setFont (steso::ui::panelFont (14.0f));
     content.addAndMakeVisible (voicesLabel);
 
     keyboard.setAvailableRange (24, 108);
     keyboard.setLowestVisibleKey (36);
     keyboard.setKeyWidth (22.0f);
-    keyboard.setColour (juce::MidiKeyboardComponent::keyDownOverlayColourId, steso::ui::colours::accent.withAlpha (0.7f));
-    keyboard.setColour (juce::MidiKeyboardComponent::mouseOverKeyOverlayColourId, steso::ui::colours::accent.withAlpha (0.3f));
-    keyboard.setColour (juce::MidiKeyboardComponent::shadowColourId, juce::Colours::transparentBlack);
-    keyboard.setColour (juce::MidiKeyboardComponent::keySeparatorLineColourId, steso::ui::colours::background);
+    // Gulnade tangenter.
+    keyboard.setColour (juce::MidiKeyboardComponent::whiteNoteColourId, juce::Colour (0xffcbc2a6));
+    keyboard.setColour (juce::MidiKeyboardComponent::blackNoteColourId, juce::Colour (0xff141412));
+    keyboard.setColour (juce::MidiKeyboardComponent::keyDownOverlayColourId, steso::ui::colours::lampRed.withAlpha (0.55f));
+    keyboard.setColour (juce::MidiKeyboardComponent::mouseOverKeyOverlayColourId, steso::ui::colours::lampAmber.withAlpha (0.25f));
+    keyboard.setColour (juce::MidiKeyboardComponent::shadowColourId, juce::Colours::black.withAlpha (0.35f));
+    keyboard.setColour (juce::MidiKeyboardComponent::keySeparatorLineColourId, juce::Colour (0xff6e6655));
+    keyboard.setColour (juce::MidiKeyboardComponent::textLabelColourId, juce::Colour (0xff5d5647));
+    keyboard.setColour (juce::MidiKeyboardComponent::upDownButtonBackgroundColourId, steso::ui::colours::metal);
+    keyboard.setColour (juce::MidiKeyboardComponent::upDownButtonArrowColourId, steso::ui::colours::text);
     keyboard.setWantsKeyboardFocus (false);
     content.addAndMakeVisible (keyboard);
     content.addAndMakeVisible (seqPanel);
@@ -331,21 +528,32 @@ StesoLeadEditor::~StesoLeadEditor()
 
 void StesoLeadEditor::paint (juce::Graphics& g)
 {
-    g.fillAll (steso::ui::colours::background);
+    using namespace steso::ui;
+    g.fillAll (colours::metalDark);
 
-    // Titel ritas i skalad bas-koordinat.
+    // Allt ritas i skalad baskoordinat (samma som innehållet).
     g.addTransform (content.getTransform());
-    auto header = juce::Rectangle<float> (18.0f, 8.0f, 400.0f, 44.0f);
-    g.setColour (steso::ui::colours::text);
-    g.setFont (juce::Font (juce::FontOptions (28.0f, juce::Font::bold)).withExtraKerningFactor (0.04f));
-    g.drawText ("Steso", header, juce::Justification::centredLeft);
-    const float w = juce::GlyphArrangement::getStringWidth (g.getCurrentFont(), "Steso");
-    g.setColour (steso::ui::colours::accent);
-    g.drawText ("Lead", header.withTrimmedLeft (w + 1.0f), juce::Justification::centredLeft);
-    g.setColour (steso::ui::colours::dimText);
-    g.setFont (juce::Font (juce::FontOptions (12.0f)));
-    g.drawText ("POLY ANALOG SYNTH  v" STESO_VERSION, header.withTrimmedLeft (150.0f).translated (0.0f, 3.0f),
-                juce::Justification::centredLeft);
+    if (panelTexture.isNull())
+        panelTexture = makePanelTexture (baseWidth, baseHeight);
+    g.drawImageAt (panelTexture, 0, 0);
+
+    // Skruvar i plåtens hörn.
+    drawScrew (g, { 9.0f, 9.0f }, 4.5f, 0.6f);
+    drawScrew (g, { (float) baseWidth - 9.0f, 9.0f }, 4.5f, 2.1f);
+    drawScrew (g, { 9.0f, (float) baseHeight - 9.0f }, 4.5f, 1.2f);
+    drawScrew (g, { (float) baseWidth - 9.0f, (float) baseHeight - 9.0f }, 4.5f, 0.2f);
+
+    auto header = juce::Rectangle<float> (24.0f, 8.0f, 600.0f, 44.0f);
+    const auto title = panelFont (32.0f).withExtraKerningFactor (0.16f);
+    g.setFont (title);
+    g.setColour (colours::text);
+    g.drawText ("STESOLEAD", header, juce::Justification::centredLeft);
+
+    const float w = juce::GlyphArrangement::getStringWidth (title, "STESOLEAD");
+    auto sub = header.withTrimmedLeft (w + 16.0f).translated (0.0f, 4.0f);
+    g.setFont (panelFont (13.0f, false).withExtraKerningFactor (0.12f));
+    g.setColour (colours::dimText);
+    g.drawText (juce::String::fromUTF8 ("СТЕСОЛИД  ·  ЭМИ-12  ·  v" STESO_VERSION), sub, juce::Justification::centredLeft);
 }
 
 void StesoLeadEditor::resized()
@@ -408,7 +616,7 @@ void StesoLeadEditor::timerCallback()
     if (v != lastVoices)
     {
         lastVoices = v;
-        voicesLabel.setText ("Voices " + juce::String (v) + "/" + juce::String (steso::dsp::SynthEngine::maxVoices),
+        voicesLabel.setText (juce::String::fromUTF8 ("ГОЛОСА ") + juce::String (v) + "/" + juce::String (steso::dsp::SynthEngine::maxVoices),
                              juce::dontSendNotification);
     }
 }

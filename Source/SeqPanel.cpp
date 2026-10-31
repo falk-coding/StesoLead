@@ -67,16 +67,15 @@ void StepGrid::paint (juce::Graphics& g)
 {
     auto& pat = processor.getPattern();
     const auto step = processor.getCurrentStep();
-    const auto accentCol = colours::accent;
-    const auto mainCol = colours::accent2;
 
-    g.setFont (juce::Font (juce::FontOptions (11.5f)));
+    g.setFont (panelFont (12.0f).withExtraKerningFactor (0.08f));
 
     for (int row = 0; row < numRows; ++row)
     {
         const auto first = cell (row, 0);
-        g.setColour (colours::dimText);
-        g.drawText (rowNames[row], juce::Rectangle<float> (0.0f, first.getY(), (float) labelWidth - 6.0f, first.getHeight()),
+        g.setColour (colours::text.withAlpha (0.8f));
+        g.drawText (juce::String (rowNames[row]).toUpperCase(),
+                    juce::Rectangle<float> (0.0f, first.getY(), (float) labelWidth - 8.0f, first.getHeight()),
                     juce::Justification::centredRight);
 
         const int len = laneLength (row);
@@ -87,51 +86,51 @@ void StepGrid::paint (juce::Graphics& g)
             const auto idx = (size_t) i;
             const auto r = cell (row, i).reduced (1.5f);
             const bool inLane = i < len;
-            const float alpha = inLane ? 1.0f : 0.25f;
+            const float alpha = inLane ? 1.0f : 0.28f;
 
-            g.setColour (colours::knobBody.withAlpha (inLane ? 1.0f : 0.45f).brighter ((i / 4) % 2 == 0 ? 0.0f : 0.08f));
-            g.fillRoundedRectangle (r, 3.0f);
+            // Nedsänkt fält, var fjärde steg lite ljusare (taktmarkering).
+            g.setColour (colours::bakelite.withAlpha ((i / 4) % 2 == 0 ? 0.75f : 0.55f));
+            g.fillRect (r);
+            drawEngravedBox (g, r, 0.6f);
 
             switch (row)
             {
                 case rowOn:
-                    if (pat.on[idx].load())
-                    {
-                        g.setColour (mainCol.withAlpha (alpha));
-                        g.fillRoundedRectangle (r.reduced (2.0f), 2.5f);
-                    }
+                {
+                    const float d = std::min (r.getWidth(), r.getHeight()) - 3.0f;
+                    drawLamp (g, r.withSizeKeepingCentre (d, d), colours::lampRed, colours::lampRedOff, pat.on[idx].load(), alpha);
                     break;
+                }
                 case rowAccent:
-                    if (pat.accent[idx].load())
-                    {
-                        g.setColour (accentCol.withAlpha (alpha));
-                        g.fillRoundedRectangle (r.reduced (3.0f), 2.5f);
-                    }
+                {
+                    const float d = std::min (r.getWidth(), r.getHeight()) - 4.0f;
+                    drawLamp (g, r.withSizeKeepingCentre (d, d), colours::lampAmber, colours::lampAmberOff, pat.accent[idx].load(), alpha);
                     break;
+                }
                 case rowTie:
                     if (pat.tie[idx].load())
                     {
-                        g.setColour (mainCol.withAlpha (alpha));
-                        g.fillRoundedRectangle (r.withHeight (r.getHeight() * 0.35f).withCentre (r.getCentre()), 2.0f);
+                        g.setColour (colours::text.withAlpha (0.85f * alpha));
+                        g.fillRect (r.withHeight (3.0f).withCentre (r.getCentre()).withTrimmedLeft (2.0f));
                     }
                     break;
                 case rowPitch:
                 {
                     const int p = pat.pitch[idx].load();
                     const float mid = r.getCentreY();
-                    const float hh = r.getHeight() * 0.5f - 1.0f;
+                    const float hh = r.getHeight() * 0.5f - 2.0f;
                     const float y2 = mid - hh * (float) p / 24.0f;
-                    g.setColour (colours::panelEdge);
+                    g.setColour (colours::dimText.withAlpha (0.35f));
                     g.drawHorizontalLine ((int) mid, r.getX() + 2.0f, r.getRight() - 2.0f);
                     if (p != 0)
                     {
-                        g.setColour (mainCol.withAlpha (0.8f * alpha));
-                        g.fillRect (juce::Rectangle<float>::leftTopRightBottom (r.getX() + 3.0f, std::min (mid, y2),
-                                                                                r.getRight() - 3.0f, std::max (mid, y2)));
-                        g.setColour (colours::text.withAlpha (alpha));
-                        g.setFont (juce::Font (juce::FontOptions (10.0f)));
+                        g.setColour (colours::text.withAlpha (0.55f * alpha));
+                        g.fillRect (juce::Rectangle<float>::leftTopRightBottom (r.getX() + 4.0f, std::min (mid, y2),
+                                                                                r.getRight() - 4.0f, std::max (mid, y2)));
+                        g.setColour (colours::lampAmber.withAlpha (alpha));
+                        g.setFont (panelFont (11.0f));
                         g.drawText ((p > 0 ? "+" : "") + juce::String (p), r, juce::Justification::centred);
-                        g.setFont (juce::Font (juce::FontOptions (11.5f)));
+                        g.setFont (panelFont (12.0f).withExtraKerningFactor (0.08f));
                     }
                     break;
                 }
@@ -139,8 +138,9 @@ void StepGrid::paint (juce::Graphics& g)
                 case rowGate:
                 {
                     const float v = row == rowProb ? pat.prob[idx].load() : pat.gate[idx].load();
-                    g.setColour ((row == rowProb ? mainCol : accentCol).withAlpha (0.75f * alpha));
-                    g.fillRoundedRectangle (r.withTrimmedTop (r.getHeight() * (1.0f - v)).reduced (2.0f, 0.0f), 2.0f);
+                    const auto col = row == rowProb ? colours::text : colours::lampAmber;
+                    g.setColour (col.withAlpha (0.5f * alpha));
+                    g.fillRect (r.reduced (3.0f, 2.0f).withTrimmedTop ((r.getHeight() - 4.0f) * (1.0f - v)));
                     break;
                 }
                 default:
@@ -150,7 +150,7 @@ void StepGrid::paint (juce::Graphics& g)
             if (i == playIdx)
             {
                 g.setColour (colours::text.withAlpha (0.9f));
-                g.drawRoundedRectangle (r, 3.0f, 1.5f);
+                g.drawRect (r.expanded (0.5f), 1.4f);
             }
         }
     }
@@ -242,26 +242,28 @@ DragBox::DragBox (StesoLeadProcessor& p) : processor (p)
 void DragBox::paint (juce::Graphics& g)
 {
     auto r = getLocalBounds().toFloat().reduced (2.0f);
-    g.setColour (dragging ? colours::accent.withAlpha (0.25f) : colours::knobBody);
-    g.fillRoundedRectangle (r, 8.0f);
+    // Präglad plåtskylt.
+    g.setColour (dragging ? colours::lampAmber.withAlpha (0.18f) : juce::Colours::black.withAlpha (0.22f));
+    g.fillRect (r);
+    drawEngravedBox (g, r);
 
     juce::Path border;
-    border.addRoundedRectangle (r, 8.0f);
-    const float dashes[] { 6.0f, 4.0f };
+    border.addRectangle (r.reduced (5.0f));
+    const float dashes[] { 7.0f, 4.0f };
     juce::Path dashed;
-    juce::PathStrokeType (1.5f).createDashedStroke (dashed, border, dashes, 2);
-    g.setColour (colours::accent);
+    juce::PathStrokeType (1.3f).createDashedStroke (dashed, border, dashes, 2);
+    g.setColour (colours::text.withAlpha (0.45f));
     g.fillPath (dashed);
 
     const auto range = getRange ? getRange() : Range {};
-    auto text = r.reduced (8.0f);
+    auto text = r.reduced (12.0f);
     g.setColour (colours::text);
-    g.setFont (juce::Font (juce::FontOptions (16.0f, juce::Font::bold)));
-    g.drawText (juce::String::fromUTF8 ("⇢  Dra MIDI till DAW"), text.removeFromTop (text.getHeight() * 0.55f),
+    g.setFont (panelFont (18.0f).withExtraKerningFactor (0.1f));
+    g.drawText (juce::String::fromUTF8 ("⇢  DRA MIDI TILL DAW"), text.removeFromTop (text.getHeight() * 0.5f),
                 juce::Justification::centredBottom);
     g.setColour (colours::dimText);
-    g.setFont (juce::Font (juce::FontOptions (12.5f)));
-    g.drawFittedText (range.label, text.toNearestInt(), juce::Justification::centredTop, 2);
+    g.setFont (panelFont (13.0f, false));
+    g.drawFittedText (range.label, text.toNearestInt().withTrimmedTop (4), juce::Justification::centredTop, 2);
 }
 
 void DragBox::mouseDrag (const juce::MouseEvent& e)
@@ -342,8 +344,8 @@ SeqPanel::SeqPanel (StesoLeadProcessor& p) : processor (p), grid (p), dragBox (p
     auto setupLabel = [this] (juce::Label& l, const juce::String& text)
     {
         l.setText (text, juce::dontSendNotification);
-        l.setFont (juce::Font (juce::FontOptions (12.5f)));
-        l.setColour (juce::Label::textColourId, colours::dimText);
+        l.setFont (panelFont (13.0f));
+        l.setColour (juce::Label::textColourId, colours::text.withAlpha (0.85f));
         l.setJustificationType (juce::Justification::centredRight);
         addAndMakeVisible (l);
     };
@@ -353,8 +355,8 @@ SeqPanel::SeqPanel (StesoLeadProcessor& p) : processor (p), grid (p), dragBox (p
     setupLabel (rotateLabel, "Rot");
 
     bypassLabel.setText (juce::String::fromUTF8 ("Sekvensern är av – mönstret ligger i DAW:en"), juce::dontSendNotification);
-    bypassLabel.setFont (juce::Font (juce::FontOptions (12.5f, juce::Font::bold)));
-    bypassLabel.setColour (juce::Label::textColourId, colours::accent);
+    bypassLabel.setFont (panelFont (14.0f));
+    bypassLabel.setColour (juce::Label::textColourId, colours::lampRed);
     addChildComponent (bypassLabel);
     reenableButton.onClick = [this] { processor.reenableSequencer(); };
     addChildComponent (reenableButton);
@@ -438,18 +440,7 @@ DragBox::Range SeqPanel::computeRange() const
 
 void SeqPanel::paint (juce::Graphics& g)
 {
-    auto r = getLocalBounds().toFloat().reduced (3.0f);
-    g.setColour (colours::panel);
-    g.fillRoundedRectangle (r, 8.0f);
-    g.setColour (colours::panelEdge);
-    g.drawRoundedRectangle (r, 8.0f, 1.0f);
-
-    auto header = r.removeFromTop (24.0f).reduced (10.0f, 0.0f);
-    g.setColour (colours::accent2);
-    g.fillRoundedRectangle (header.getX(), header.getCentreY() - 1.0f, 4.0f, 4.0f, 2.0f);
-    g.setColour (colours::text.withAlpha (0.9f));
-    g.setFont (juce::Font (juce::FontOptions (13.0f, juce::Font::bold)).withExtraKerningFactor (0.12f));
-    g.drawText ("SEQUENCER / ARP", header.withTrimmedLeft (10.0f), juce::Justification::centredLeft);
+    drawSectionFrame (g, getLocalBounds().toFloat().reduced (3.0f), juce::String::fromUTF8 ("СЕКВЕНСОР|Sequencer / arp"));
 }
 
 void SeqPanel::resized()

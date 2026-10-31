@@ -61,6 +61,14 @@ set(STESO_SOURCES
 
 target_sources(StesoLead PRIVATE ${STESO_SOURCES})
 
+# Inbäddat typsnitt (PT Sans Narrow, SIL Open Font License – se fonts/OFL.txt).
+juce_add_binary_data(StesoLeadAssets
+    NAMESPACE StesoAssets
+    SOURCES
+        fonts/PT_Sans-Narrow-Web-Bold.ttf
+        fonts/PT_Sans-Narrow-Web-Regular.ttf)
+set_target_properties(StesoLeadAssets PROPERTIES POSITION_INDEPENDENT_CODE ON)
+
 set(STESO_DEFINES
     JUCE_WEB_BROWSER=0
     JUCE_USE_CURL=0
@@ -72,6 +80,7 @@ target_compile_definitions(StesoLead PUBLIC ${STESO_DEFINES})
 
 target_link_libraries(StesoLead
     PRIVATE
+        StesoLeadAssets
         juce::juce_audio_utils
         juce::juce_dsp
     PUBLIC
@@ -87,6 +96,7 @@ if(STESO_BUILD_TESTS)
     target_compile_definitions(StesoLeadTests PRIVATE ${STESO_DEFINES} STESO_TESTS=1)
     target_link_libraries(StesoLeadTests
         PRIVATE
+            StesoLeadAssets
             juce::juce_audio_utils
             juce::juce_dsp
         PUBLIC

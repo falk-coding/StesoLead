@@ -33,6 +33,7 @@ Ny release: **Actions → Build → Run workflow** med `release_tag` (t.ex. `v1.
 - **2x oversampling** för oscillatorer, filter, feedback och mättning – mindre digital aliasing, varmare drive.
 - 11 nya presets i *Fat Bass*, *Fat Lead*, *Fat Poly* och *Sequence*. Pluginet startar på **Three Osc Lead**.
 - Nya funktioner är avstängda som standard, så äldre presets och projekt låter som förut.
+- **Skin:** sliten sovjetisk apparat – grå plåt med repor, bakelitrattar, kyrilliska sektionsnamn, signallampor i sekvensern.
 
 ## Sekvenser / arpeggiator (v1.1)
 - **Seq:** stegen spelas relativt tangenten du håller (transponera live). **Arp:** spelar ackordet du håller
@@ -71,4 +72,5 @@ CPU, röstlägen, sustainpedal och att sparat läge laddas exakt. CI kör dessut
 | `Source/PluginEditor.*` | GUI |
 
 ## Licens
+Typsnittet PT Sans Narrow (ParaType) är inbäddat under SIL Open Font License – se `fonts/OFL.txt`.
 JUCE används under JUCE 8-licensen (gratis för privat bruk/låg omsättning). VST är ett varumärke som tillhör Steinberg Media Technologies GmbH.
