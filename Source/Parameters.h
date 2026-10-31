@@ -58,6 +58,18 @@ namespace pid
     inline constexpr const char* delayMix   = "delayMix";
     inline constexpr const char* reverbMix  = "reverbMix";
     inline constexpr const char* master     = "master";
+
+    inline constexpr const char* seqMode     = "seqMode";
+    inline constexpr const char* seqRate     = "seqRate";
+    inline constexpr const char* seqSwing    = "seqSwing";
+    inline constexpr const char* seqGate     = "seqGate";
+    inline constexpr const char* arpOrder    = "arpOrder";
+    inline constexpr const char* arpOctaves  = "arpOctaves";
+    inline constexpr const char* seqLength   = "seqLength";
+    inline constexpr const char* seqAccLen   = "seqAccLen";
+    inline constexpr const char* seqGateLen  = "seqGateLen";
+    inline constexpr const char* seqLatch    = "seqLatch";
+    inline constexpr const char* seqMidiOut  = "seqMidiOut";
 } // namespace pid
 
 inline const juce::StringArray waveNames { "Saw", "Square", "Triangle", "Sine" };
@@ -84,6 +96,10 @@ struct ParamPointers
     std::atomic<float>* drift {}; std::atomic<float>* spread {};
     std::atomic<float>* chorus {}; std::atomic<float>* delayTime {}; std::atomic<float>* delayFb {};
     std::atomic<float>* delayMix {}; std::atomic<float>* reverbMix {}; std::atomic<float>* master {};
+    std::atomic<float>* seqMode {}; std::atomic<float>* seqRate {}; std::atomic<float>* seqSwing {};
+    std::atomic<float>* seqGate {}; std::atomic<float>* arpOrder {}; std::atomic<float>* arpOctaves {};
+    std::atomic<float>* seqLength {}; std::atomic<float>* seqAccLen {}; std::atomic<float>* seqGateLen {};
+    std::atomic<float>* seqLatch {}; std::atomic<float>* seqMidiOut {};
 
     void bind (juce::AudioProcessorValueTreeState& apvts);
 };

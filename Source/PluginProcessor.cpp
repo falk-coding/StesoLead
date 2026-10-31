@@ -7,6 +7,11 @@ StesoLeadProcessor::StesoLeadProcessor()
 {
     params.bind (apvts);
     work.setSize (2, workSize);
+    genEvents.reserve (256);
+    outEvents.reserve (512);
+    for (auto& n : exportNotes)
+        n = 60;
+    exportCount = 1;
 }
 
 bool StesoLeadProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
@@ -17,18 +22,22 @@ bool StesoLeadProcessor::isBusesLayoutSupported (const BusesLayout& layouts) con
     return layouts.getMainInputChannelSet().isDisabled();
 }
 
-void StesoLeadProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
+void StesoLeadProcessor::prepareToPlay (double sr, int samplesPerBlock)
 {
-    engine.prepare (sampleRate, samplesPerBlock);
-    chorus.prepare (sampleRate);
-    delay.prepare (sampleRate);
-    reverb.prepare (sampleRate);
-    dcL.prepare ((float) sampleRate);
-    dcR.prepare ((float) sampleRate);
-    masterGain.reset (sampleRate, 0.05);
+    sampleRate = sr;
+    engine.prepare (sr, samplesPerBlock);
+    chorus.prepare (sr);
+    delay.prepare (sr);
+    reverb.prepare (sr);
+    dcL.prepare ((float) sr);
+    dcR.prepare ((float) sr);
+    masterGain.reset (sr, 0.05);
     masterGain.setCurrentAndTargetValue (juce::Decibels::decibelsToGain (params.master->load()));
     work.setSize (2, workSize, false, false, true);
+    engineMidi.ensureSize (4096);
+    seqOutMidi.ensureSize (4096);
     keyboardState.reset();
+    reset();
 }
 
 void StesoLeadProcessor::reset()
@@ -39,8 +48,212 @@ void StesoLeadProcessor::reset()
     reverb.reset();
     dcL.reset();
     dcR.reset();
+    noteStream = {};
+    physical = {};
+    latched = {};
+    hostWasPlaying = freeRunning = false;
+    currentStep = -1;
 }
 
+//==============================================================================
+steso::seq::Settings StesoLeadProcessor::currentSeqSettings() const
+{
+    using namespace steso::seq;
+    Settings s;
+    s.mode = (Mode) juce::jlimit (0, 2, (int) params.seqMode->load());
+    s.stepPpq = rateToPpq ((int) params.seqRate->load());
+    s.swing = params.seqSwing->load();
+    s.gateScale = params.seqGate->load();
+    s.arpOrder = (ArpOrder) juce::jlimit (0, 4, (int) params.arpOrder->load());
+    s.arpOctaves = (int) params.arpOctaves->load();
+    s.length = (int) params.seqLength->load();
+    s.accentLength = (int) params.seqAccLen->load();
+    s.gateLength = (int) params.seqGateLen->load();
+    return s;
+}
+
+StesoLeadProcessor::HostInfo StesoLeadProcessor::getHostInfo() const
+{
+    HostInfo h;
+    h.hasLoop = hostHasLoop.load();
+    h.loopStart = hostLoopStart.load();
+    h.loopEnd = hostLoopEnd.load();
+    h.timeSigNum = hostTsNum.load();
+    h.timeSigDen = hostTsDen.load();
+    h.bpm = hostBpmAtomic.load();
+    return h;
+}
+
+steso::seq::Chord StesoLeadProcessor::getExportChord() const
+{
+    steso::seq::Chord c;
+    c.count = juce::jlimit (1, steso::seq::maxHeld, exportCount.load());
+    for (int i = 0; i < c.count; ++i)
+        c.notes[(size_t) i] = exportNotes[(size_t) i].load();
+    return c;
+}
+
+juce::File StesoLeadProcessor::writeMidiExport (double fromPpq, double toPpq, const juce::String& fileName) const
+{
+    auto settings = currentSeqSettings();
+    if (settings.mode == steso::seq::Mode::off)
+        settings.mode = (steso::seq::Mode) juce::jlimit (1, 2, modeBeforeExport);
+
+    const auto host = getHostInfo();
+    const auto midiFile = steso::seq::renderMidiFile (pattern, settings, getExportChord(), fromPpq, toPpq,
+                                                      host.bpm, host.timeSigNum, host.timeSigDen);
+
+    auto dir = juce::File::getSpecialLocation (juce::File::tempDirectory).getChildFile ("StesoLead");
+    dir.createDirectory();
+    auto file = dir.getChildFile (juce::File::createLegalFileName (fileName));
+    file.deleteFile();
+
+    juce::FileOutputStream out (file);
+    if (! out.openedOk() || ! midiFile.writeTo (out, 1))
+        return {};
+    out.flush();
+    return file;
+}
+
+void StesoLeadProcessor::sequencerExported()
+{
+    const int mode = (int) params.seqMode->load();
+    if (mode != 0)
+        modeBeforeExport = mode;
+
+    if (auto* p = apvts.getParameter (steso::pid::seqMode))
+        p->setValueNotifyingHost (p->convertTo0to1 (0.0f));
+    bypassedByExport = true;
+}
+
+void StesoLeadProcessor::reenableSequencer()
+{
+    if (auto* p = apvts.getParameter (steso::pid::seqMode))
+        p->setValueNotifyingHost (p->convertTo0to1 ((float) juce::jlimit (1, 2, modeBeforeExport)));
+    bypassedByExport = false;
+}
+
+//==============================================================================
+void StesoLeadProcessor::notePressed (int note)
+{
+    if (physical.count == 0)
+        latched.count = 0;   // nytt ackord ersätter det gamla
+
+    // Ta bort dublett, lägg sist.
+    int w = 0;
+    for (int i = 0; i < physical.count; ++i)
+        if (physical.notes[(size_t) i] != note)
+            physical.notes[(size_t) w++] = physical.notes[(size_t) i];
+    physical.count = w;
+    if (physical.count < steso::seq::maxHeld)
+        physical.notes[(size_t) physical.count++] = note;
+
+    latched = physical;
+    exportCount = physical.count;
+    for (int i = 0; i < physical.count; ++i)
+        exportNotes[(size_t) i] = physical.notes[(size_t) i];
+}
+
+void StesoLeadProcessor::noteReleased (int note)
+{
+    int w = 0;
+    for (int i = 0; i < physical.count; ++i)
+        if (physical.notes[(size_t) i] != note)
+            physical.notes[(size_t) w++] = physical.notes[(size_t) i];
+    physical.count = w;
+}
+
+void StesoLeadProcessor::flushSequencer (juce::MidiBuffer& toEngine, juce::MidiBuffer& toOut)
+{
+    outEvents.clear();
+    noteStream.flushAll (0.0, outEvents);
+    for (const auto& o : outEvents)
+    {
+        const auto m = juce::MidiMessage::noteOff (1, o.note);
+        toEngine.addEvent (m, 0);
+        toOut.addEvent (m, 0);
+    }
+}
+
+void StesoLeadProcessor::runSequencer (int numSamples, juce::MidiBuffer& toEngine, juce::MidiBuffer& toOut)
+{
+    const double ppqPerSample = hostBpm / 60.0 / sampleRate;
+    const bool latch = params.seqLatch->load() > 0.5f;
+    double start = 0.0;
+    bool run = false;
+
+    if (hostPlaying && hostPpq.hasValue())
+    {
+        start = *hostPpq;
+        // Hopp i transporten (loop, flytt av spelhuvudet) -> släpp klingande toner.
+        if (! hostWasPlaying || std::abs (start - expectedNextPpq) > 1.0e-3)
+            flushSequencer (toEngine, toOut);
+        freeRunning = false;
+        run = true;
+    }
+    else
+    {
+        if (hostWasPlaying)
+            flushSequencer (toEngine, toOut);
+
+        // Ingen transport: kör på egen klocka så länge tangenter hålls ner.
+        if (physical.count > 0)
+        {
+            if (! freeRunning)
+            {
+                freeRunning = true;
+                freePpq = 0.0;
+                flushSequencer (toEngine, toOut);
+            }
+            start = freePpq;
+            run = true;
+        }
+        else if (freeRunning)
+        {
+            freeRunning = false;
+        }
+    }
+    hostWasPlaying = hostPlaying;
+
+    if (! run)
+    {
+        // Låt redan startade toner få sitt slut även när klockan står.
+        flushSequencer (toEngine, toOut);
+        currentStep = -1;
+        return;
+    }
+
+    const double end = start + numSamples * ppqPerSample;
+    expectedNextPpq = end;
+    if (freeRunning)
+        freePpq = end;
+
+    const auto settings = currentSeqSettings();
+    const steso::seq::Chord& chord = physical.count > 0 ? physical
+                                   : ((latch && hostPlaying) ? latched : steso::seq::Chord {});
+
+    genEvents.clear();
+    outEvents.clear();
+    steso::seq::generate (pattern, settings, chord, start, end, genEvents);
+    for (const auto& e : genEvents)
+    {
+        noteStream.flushUntil (e.ppqOn, outEvents);
+        noteStream.add (e, outEvents);
+    }
+    noteStream.flushUntil (end, outEvents);
+
+    for (const auto& o : outEvents)
+    {
+        const int offset = juce::jlimit (0, numSamples - 1, (int) std::floor ((o.ppq - start) / ppqPerSample));
+        const auto m = o.isOn ? juce::MidiMessage::noteOn (1, o.note, o.velocity) : juce::MidiMessage::noteOff (1, o.note);
+        toEngine.addEvent (m, offset);
+        toOut.addEvent (m, offset);
+    }
+
+    currentStep = (int64_t) std::floor (start / settings.stepPpq);
+}
+
+//==============================================================================
 void StesoLeadProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midi)
 {
     juce::ScopedNoDenormals noDenormals;
@@ -49,6 +262,72 @@ void StesoLeadProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::M
 
     // Lägg till toner från GUI-klaviaturen.
     keyboardState.processNextMidiBuffer (midi, 0, numSamples, true);
+
+    // Transport och tempo från DAW:en.
+    hostPlaying = false;
+    hostPpq = {};
+    if (auto* ph = getPlayHead())
+    {
+        if (auto pos = ph->getPosition())
+        {
+            hostPlaying = pos->getIsPlaying();
+            hostPpq = pos->getPpqPosition();
+            hostBpm = pos->getBpm().orFallback (hostBpm);
+            if (auto loop = pos->getLoopPoints(); loop.hasValue() && loop->ppqEnd > loop->ppqStart)
+            {
+                hostLoopStart = loop->ppqStart;
+                hostLoopEnd = loop->ppqEnd;
+                hostHasLoop = true;
+            }
+            if (auto ts = pos->getTimeSignature())
+            {
+                hostTsNum = juce::jmax (1, ts->numerator);
+                hostTsDen = juce::jmax (1, ts->denominator);
+            }
+        }
+    }
+    hostBpm = juce::jlimit (20.0, 999.0, hostBpm);
+    hostBpmAtomic = hostBpm;
+
+    const int seqMode = (int) params.seqMode->load();
+    engineMidi.clear();
+    seqOutMidi.clear();
+
+    if (seqMode != lastSeqMode)
+    {
+        // Byte av läge: släpp allt så att inga toner hänger kvar.
+        flushSequencer (engineMidi, seqOutMidi);
+        engineMidi.addEvent (juce::MidiMessage::allNotesOff (1), 0);
+        freeRunning = false;
+        hostWasPlaying = false;
+        lastSeqMode = seqMode;
+    }
+
+    for (const auto meta : midi)
+    {
+        const auto m = meta.getMessage();
+        if (m.isNoteOn())
+        {
+            notePressed (m.getNoteNumber());
+            if (seqMode == 0)
+                engineMidi.addEvent (m, meta.samplePosition);
+        }
+        else if (m.isNoteOff())
+        {
+            noteReleased (m.getNoteNumber());
+            if (seqMode == 0)
+                engineMidi.addEvent (m, meta.samplePosition);
+        }
+        else
+        {
+            engineMidi.addEvent (m, meta.samplePosition);
+        }
+    }
+
+    if (seqMode != 0)
+        runSequencer (numSamples, engineMidi, seqOutMidi);
+    else
+        currentStep = -1;
 
     masterGain.setTargetValue (juce::Decibels::decibelsToGain (params.master->load(), -60.0f));
     const int chorusMode = (int) params.chorus->load();
@@ -64,7 +343,7 @@ void StesoLeadProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::M
         float* l = work.getWritePointer (0);
         float* r = work.getWritePointer (1);
 
-        engine.process (l, r, n, midi, offset, params);
+        engine.process (l, r, n, engineMidi, offset, params);
         chorus.process (l, r, n, chorusMode);
         delay.process (l, r, n, delayTime, delayFb, delayMix);
         reverb.process (l, r, n, reverbMix);
@@ -92,7 +371,11 @@ void StesoLeadProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::M
     }
 
     activeVoices.store (engine.getActiveVoiceCount());
+
+    // MIDI ut: sekvenserns toner (för DAW:ar som kan spela in MIDI från instrument).
     midi.clear();
+    if (seqMode != 0 && params.seqMidiOut->load() > 0.5f)
+        midi.swapWith (seqOutMidi);
 }
 
 juce::AudioProcessorEditor* StesoLeadProcessor::createEditor()
@@ -113,7 +396,8 @@ void StesoLeadProcessor::setCurrentProgram (int index)
         return;
 
     currentProgram = index;
-    steso::applyPreset (apvts, presets[(size_t) index]);
+    steso::applyPreset (apvts, presets[(size_t) index], pattern);
+    bypassedByExport = false;
     ++programChangeCounter;
 }
 
@@ -128,6 +412,8 @@ void StesoLeadProcessor::getStateInformation (juce::MemoryBlock& destData)
     auto state = apvts.copyState();
     state.setProperty ("program", currentProgram, nullptr);
     state.setProperty ("version", STESO_VERSION, nullptr);
+    state.removeChild (state.getChildWithName ("Pattern"), nullptr);
+    state.appendChild (pattern.toTree(), nullptr);
     if (auto xml = state.createXml())
         copyXmlToBinary (*xml, destData);
 }
@@ -140,6 +426,12 @@ void StesoLeadProcessor::setStateInformation (const void* data, int sizeInBytes)
         {
             auto tree = juce::ValueTree::fromXml (*xml);
             currentProgram = juce::jlimit (0, getNumPrograms() - 1, (int) tree.getProperty ("program", 0));
+            const auto patternTree = tree.getChildWithName ("Pattern");
+            if (patternTree.isValid())
+                pattern.fromTree (patternTree);
+            else
+                pattern.setDefault();
+            tree.removeChild (patternTree, nullptr);
             apvts.replaceState (tree);
             ++programChangeCounter;
         }

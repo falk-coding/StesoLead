@@ -5,6 +5,7 @@
 #include "Presets.h"
 #include "dsp/SynthEngine.h"
 #include "dsp/Effects.h"
+#include "seq/Sequencer.h"
 
 class StesoLeadProcessor : public juce::AudioProcessor
 {
@@ -24,7 +25,7 @@ public:
 
     const juce::String getName() const override { return "StesoLead"; }
     bool acceptsMidi() const override { return true; }
-    bool producesMidi() const override { return false; }
+    bool producesMidi() const override { return true; }
     bool isMidiEffect() const override { return false; }
     double getTailLengthSeconds() const override { return 3.0; }
 
@@ -43,10 +44,43 @@ public:
     juce::MidiKeyboardState keyboardState;
 
     int getActiveVoiceCount() const noexcept { return activeVoices.load(); }
-    // Bumpas när en preset laddas, så att GUI:t kan uppdatera presetnamnet.
+    // Bumpas när en preset eller ett sparat läge laddas, så att GUI:t kan uppdatera sig.
     std::atomic<int> programChangeCounter { 0 };
 
+    //==============================================================================
+    // Sekvenser
+    steso::seq::Pattern& getPattern() noexcept { return pattern; }
+    steso::seq::Settings currentSeqSettings() const;
+
+    // Info från DAW:en (för GUI:t).
+    struct HostInfo
+    {
+        bool hasLoop = false;
+        double loopStart = 0, loopEnd = 0;
+        int timeSigNum = 4, timeSigDen = 4;
+        double bpm = 120;
+    };
+    HostInfo getHostInfo() const;
+
+    // Aktuellt globalt stegnummer (för spelhuvudet i GUI:t), -1 = står still.
+    int64_t getCurrentStep() const noexcept { return currentStep.load(); }
+
+    // Skapar en MIDI-fil för exportområdet [fromPpq, toPpq). Returnerar en temporär fil.
+    juce::File writeMidiExport (double fromPpq, double toPpq, const juce::String& fileName) const;
+    // Ackordet/grundtonen som exporten använder (senast spelade).
+    steso::seq::Chord getExportChord() const;
+
+    // Efter en dragning till DAW:en: stäng av sekvensern så att det inte låter dubbelt.
+    void sequencerExported();
+    void reenableSequencer();
+    bool isBypassedByExport() const noexcept { return bypassedByExport.load(); }
+
 private:
+    void runSequencer (int numSamples, juce::MidiBuffer& engineMidi, juce::MidiBuffer& seqOut);
+    void flushSequencer (juce::MidiBuffer& engineMidi, juce::MidiBuffer& seqOut);
+    void notePressed (int note);
+    void noteReleased (int note);
+
     steso::ParamPointers params;
     steso::dsp::SynthEngine engine;
     steso::dsp::Chorus chorus;
@@ -59,6 +93,31 @@ private:
     juce::AudioBuffer<float> work;
     std::atomic<int> activeVoices { 0 };
     int currentProgram = 0;
+    double sampleRate = 44100.0;
+
+    // Sekvenserns tillstånd (ljudtråden)
+    steso::seq::Pattern pattern;
+    steso::seq::NoteStream noteStream;
+    steso::seq::Chord physical, latched;
+    std::vector<steso::seq::NoteEvent> genEvents;
+    std::vector<steso::seq::NoteStream::Out> outEvents;
+    juce::MidiBuffer engineMidi, seqOutMidi;
+    int lastSeqMode = 0;
+    bool hostWasPlaying = false, freeRunning = false;
+    double expectedNextPpq = 0, freePpq = 0;
+    bool hostPlaying = false;
+    juce::Optional<double> hostPpq;
+    double hostBpm = 120.0;
+
+    std::atomic<int64_t> currentStep { -1 };
+    std::atomic<bool> hostHasLoop { false };
+    std::atomic<double> hostLoopStart { 0 }, hostLoopEnd { 0 }, hostBpmAtomic { 120 };
+    std::atomic<int> hostTsNum { 4 }, hostTsDen { 4 };
+    std::array<std::atomic<int>, steso::seq::maxHeld> exportNotes {};
+    std::atomic<int> exportCount { 0 };
+
+    std::atomic<bool> bypassedByExport { false };
+    int modeBeforeExport = 2;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (StesoLeadProcessor)
 };

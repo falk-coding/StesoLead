@@ -21,7 +21,20 @@ Ny release: **Actions → Build → Run workflow** med `release_tag` (t.ex. `v1.
 - LFO (sine, triangle, saw, square, S&H) med fade in → pitch, filter, PWM
 - Analog drift per röst, stereospridning
 - Chorus (Juno-stil I/II), stereodelay med lågpass i återkopplingen, reverb
-- 20 fabrikspresets, skalbart GUI, inbyggd klaviatur
+- 24 fabrikspresets (varav 4 med sekvenser), skalbart GUI, inbyggd klaviatur
+
+## Sekvenser / arpeggiator (v1.1)
+- **Seq:** stegen spelas relativt tangenten du håller (transponera live). **Arp:** spelar ackordet du håller
+  (Up, Down, Up/Down, Random, As Played, 1–4 oktaver). **Latch** håller kvar ackordet när du släpper tangenterna.
+- **1–32 steg, oberoende av takten.** Steps, Acc steps och Gate steps har egna längder → polymetri (t.ex. 7 mot 5 mot 4/4).
+- Per steg: på/av, accent, tie/slide, tonhöjd ±24, sannolikhet och gate. Euclid-knappen sprider *Hits* jämnt över *Steps*.
+- Synkad mot DAW:ns tempo. Positionen räknas från takt 1, så mönstret ligger alltid på samma ställe i låten.
+- **Dra MIDI till DAW:** dra rutan till ett MIDI-spår. Längd = DAW:ns locators (om DAW:n skickar dem) eller Från/Till takt.
+  Klippet är exakt det som spelas – även sannolikhetsstegen. Sekvensern stängs sedan av automatiskt så att det
+  inte låter dubbelt (**Slå på igen** finns i panelen). Släpp klippet på vänster locator / Från-takten.
+- **MIDI out:** skickar sekvensens toner live till DAW:ar som kan spela in MIDI från instrument
+  (t.ex. Ableton, Bitwig, Cubase, FL Studio). Logic och Reason stöder det troligen inte – använd dra-och-släpp.
+- Pattern sparas med projektet och med presets. Mode/Rate/Swing m.m. är automatiserbara.
 
 **Format:** VST3 (Mac + Windows) och AU (Mac). Fungerar i Reason, Ableton, Cubase, FL Studio, Bitwig,
 Studio One, Reaper, Logic och GarageBand. Pro Tools (AAX) stöds inte – kräver avtal och betald signering hos Avid.
@@ -42,6 +55,8 @@ CPU, röstlägen, sustainpedal och att sparat läge laddas exakt. CI kör dessut
 | `Source/dsp/DspUtils.h` | Oscillator, envelope, ladderfilter |
 | `Source/dsp/SynthEngine.*` | Röster, röststöld, MIDI, LFO |
 | `Source/dsp/Effects.*` | Chorus, delay, reverb |
+| `Source/seq/Sequencer.*` | Sekvenser/arp, export till MIDI-fil (samma kod för realtid och export) |
+| `Source/SeqPanel.*` | Sekvenser-GUI: stegrutnät, dragruta |
 | `Source/PluginEditor.*` | GUI |
 
 ## Licens

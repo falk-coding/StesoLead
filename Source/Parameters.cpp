@@ -1,4 +1,5 @@
 #include "Parameters.h"
+#include "seq/Sequencer.h"
 
 namespace steso
 {
@@ -149,8 +150,21 @@ juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout()
     fx->addChild (std::make_unique<APF> (id (pid::reverbMix), "Reverb Mix", Range (0.0f, 1.0f), 0.0f, percentAttr()));
     fx->addChild (std::make_unique<APF> (id (pid::master), "Master", Range (-36.0f, 6.0f), -6.0f, withLabel ("dB")));
 
+    auto seqGroup = std::make_unique<juce::AudioProcessorParameterGroup> ("seq", "Sequencer", "|");
+    seqGroup->addChild (std::make_unique<APC> (id (pid::seqMode), "Seq Mode", seq::modeNames, 0));
+    seqGroup->addChild (std::make_unique<APC> (id (pid::seqRate), "Seq Rate", seq::rateNames, 4));
+    seqGroup->addChild (std::make_unique<APF> (id (pid::seqSwing), "Seq Swing", Range (0.0f, 1.0f), 0.0f, percentAttr()));
+    seqGroup->addChild (std::make_unique<APF> (id (pid::seqGate), "Seq Gate", Range (0.1f, 1.0f), 1.0f, percentAttr()));
+    seqGroup->addChild (std::make_unique<APC> (id (pid::arpOrder), "Arp Order", seq::arpOrderNames, 0));
+    seqGroup->addChild (std::make_unique<API> (id (pid::arpOctaves), "Arp Octaves", 1, 4, 1));
+    seqGroup->addChild (std::make_unique<API> (id (pid::seqLength), "Seq Steps", 1, seq::maxSteps, 16));
+    seqGroup->addChild (std::make_unique<API> (id (pid::seqAccLen), "Accent Steps", 1, seq::maxSteps, 16));
+    seqGroup->addChild (std::make_unique<API> (id (pid::seqGateLen), "Gate Steps", 1, seq::maxSteps, 16));
+    seqGroup->addChild (std::make_unique<juce::AudioParameterBool> (id (pid::seqLatch), "Seq Latch", true));
+    seqGroup->addChild (std::make_unique<juce::AudioParameterBool> (id (pid::seqMidiOut), "Seq MIDI Out", false));
+
     layout.add (std::move (osc1), std::move (osc2), std::move (mix), std::move (filter), std::move (fenv),
-                std::move (aenv), std::move (lfo), std::move (voice), std::move (fx));
+                std::move (aenv), std::move (lfo), std::move (voice), std::move (fx), std::move (seqGroup));
     return layout;
 }
 
@@ -177,5 +191,9 @@ void ParamPointers::bind (juce::AudioProcessorValueTreeState& s)
     drift = p (pid::drift); spread = p (pid::spread);
     chorus = p (pid::chorus); delayTime = p (pid::delayTime); delayFb = p (pid::delayFb);
     delayMix = p (pid::delayMix); reverbMix = p (pid::reverbMix); master = p (pid::master);
+    seqMode = p (pid::seqMode); seqRate = p (pid::seqRate); seqSwing = p (pid::seqSwing);
+    seqGate = p (pid::seqGate); arpOrder = p (pid::arpOrder); arpOctaves = p (pid::arpOctaves);
+    seqLength = p (pid::seqLength); seqAccLen = p (pid::seqAccLen); seqGateLen = p (pid::seqGateLen);
+    seqLatch = p (pid::seqLatch); seqMidiOut = p (pid::seqMidiOut);
 }
 } // namespace steso

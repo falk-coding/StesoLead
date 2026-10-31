@@ -10,6 +10,9 @@ namespace
     constexpr float L_SINE = 0, L_TRI = 1, L_SQUARE = 3, L_SH = 4;
     constexpr float POLY = 0, MONO = 1, LEGATO = 2;
     constexpr float CH_I = 1, CH_II = 2;
+    constexpr float S_ARP = 1, S_SEQ = 2;
+    constexpr float R_8T = 2, R_16 = 4;
+    constexpr float A_UPDOWN = 2;
 }
 
 const std::vector<Preset>& getFactoryPresets()
@@ -128,13 +131,49 @@ const std::vector<Preset>& getFactoryPresets()
             { osc2Fine, 18 }, { drift, 0.7f }, { spread, 0.9f }, { chorus, CH_II },
             { cutoff, 5000 }, { resonance, 0.1f }, { filterEnv, 0.15f },
             { aAttack, 0.01f }, { aRelease, 0.5f }, { reverbMix, 0.25f } } },
+
+        // Sekvenser: håll en tangent (eller lägg en lång ton i DAW:en) och tryck play.
+        { "Odd Seven Acid", "Sequence", {
+            { voiceMode, LEGATO }, { mixOsc2, 0.0f }, { cutoff, 400 }, { resonance, 0.8f }, { filterEnv, 0.65f },
+            { fDecay, 0.2f }, { fSustain, 0.05f }, { drive, 0.55f }, { glide, 0.05f }, { filterVel, 0.6f },
+            { aAttack, 0.001f }, { aDecay, 0.3f }, { aSustain, 0.9f }, { aRelease, 0.08f },
+            { delayMix, 0.2f }, { spread, 0.0f },
+            { seqMode, S_SEQ }, { seqRate, R_16 }, { seqLength, 7 }, { seqAccLen, 5 }, { seqGateLen, 3 } },
+          "0! 0 12~ 0 3 . 7?70" },
+
+        { "Five Over Four Arp", "Sequence", {
+            { osc2Wave, SQUARE }, { cutoff, 900 }, { resonance, 0.3f }, { filterEnv, 0.6f }, { filterVel, 0.5f },
+            { fDecay, 0.25f }, { fSustain, 0.0f }, { aAttack, 0.001f }, { aDecay, 0.6f }, { aSustain, 0.0f },
+            { aRelease, 0.3f }, { delayMix, 0.3f }, { delayFb, 0.45f }, { chorus, CH_I }, { reverbMix, 0.15f },
+            { seqMode, S_ARP }, { seqRate, R_16 }, { arpOrder, A_UPDOWN }, { arpOctaves, 2 },
+            { seqLength, 5 }, { seqAccLen, 4 } },
+          "0! 0 . 0 0'" },
+
+        { "Euclid 5/8 Lead", "Sequence", {
+            { voiceMode, MONO }, { osc1Wave, SQUARE }, { osc2Wave, SQUARE }, { osc2Semi, 12 }, { mixOsc2, 0.35f },
+            { cutoff, 2200 }, { resonance, 0.25f }, { filterEnv, 0.35f }, { fDecay, 0.3f }, { fSustain, 0.2f },
+            { aSustain, 1.0f }, { aRelease, 0.1f }, { delayMix, 0.25f }, { spread, 0.0f },
+            { seqMode, S_SEQ }, { seqRate, R_16 }, { seqSwing, 0.35f }, { seqLength, 8 }, { seqAccLen, 3 } },
+          "0! . 0 . 7 0 . 12" },
+
+        { "Triplet Drift Arp", "Sequence", {
+            { osc2Fine, 12 }, { cutoff, 2400 }, { resonance, 0.15f }, { filterEnv, 0.3f }, { fDecay, 0.4f },
+            { aAttack, 0.005f }, { aDecay, 0.5f }, { aSustain, 0.3f }, { aRelease, 0.4f },
+            { chorus, CH_II }, { reverbMix, 0.35f }, { delayMix, 0.2f }, { spread, 0.7f },
+            { seqMode, S_ARP }, { seqRate, R_8T }, { arpOctaves, 3 }, { seqLength, 11 } },
+          "0! 0?60 0 0?50 0_ 0?70" },
     };
 
     return presets;
 }
 
-void applyPreset (juce::AudioProcessorValueTreeState& apvts, const Preset& preset)
+void applyPreset (juce::AudioProcessorValueTreeState& apvts, const Preset& preset, seq::Pattern& pattern)
 {
+    if (preset.pattern.isEmpty())
+        pattern.setDefault();
+    else
+        pattern.fromString (preset.pattern);
+
     for (auto* p : apvts.processor.getParameters())
         if (auto* rp = dynamic_cast<juce::RangedAudioParameter*> (p))
             rp->setValueNotifyingHost (rp->getDefaultValue());

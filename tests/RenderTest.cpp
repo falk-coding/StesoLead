@@ -255,10 +255,229 @@ void testState()
     std::cout << "  " << a->getParameters().size() << " parametrar kontrollerade" << std::endl;
 }
 
+
+struct TestPlayHead : juce::AudioPlayHead
+{
+    double ppq = 0.0, bpm = 120.0;
+    bool playing = true;
+
+    juce::Optional<PositionInfo> getPosition() const override
+    {
+        PositionInfo p;
+        p.setPpqPosition (ppq);
+        p.setBpm (bpm);
+        p.setIsPlaying (playing);
+        p.setTimeSignature (TimeSignature { 4, 4 });
+        p.setLoopPoints (LoopPoints { 16.0, 48.0 });
+        return p;
+    }
+};
+
+struct SeqNote { double ppq; int note; };
+
+// Kör processorn med transport från ppq 0. Returnerar MIDI-ut (note on) med position i ppq.
+std::vector<SeqNote> runTransport (StesoLeadProcessor& proc, TestPlayHead& ph, double bars,
+                                   const std::vector<int>& heldNotes, int& onCount, int& offCount)
+{
+    const double sr = 48000.0;
+    const int block = 256;
+    proc.setPlayHead (&ph);
+    proc.setRateAndBufferSizeDetails (sr, block);
+    proc.prepareToPlay (sr, block);
+
+    const double ppqPerSample = ph.bpm / 60.0 / sr;
+    const int total = (int) (bars * 4.0 / ppqPerSample);
+    juce::AudioBuffer<float> buffer (2, block);
+    juce::MidiBuffer midi;
+    std::vector<SeqNote> result;
+    onCount = offCount = 0;
+
+    for (int pos = 0; pos < total; pos += block)
+    {
+        ph.ppq = pos * ppqPerSample;
+        ph.playing = true;
+        buffer.clear();
+        midi.clear();
+        if (pos == 0)
+            for (int n : heldNotes)
+                midi.addEvent (juce::MidiMessage::noteOn (1, n, 0.9f), 0);
+
+        proc.processBlock (buffer, midi);
+        for (const auto meta : midi)
+        {
+            const auto m = meta.getMessage();
+            if (m.isNoteOn())
+            {
+                ++onCount;
+                result.push_back ({ ph.ppq + meta.samplePosition * ppqPerSample, m.getNoteNumber() });
+            }
+            else if (m.isNoteOff())
+                ++offCount;
+        }
+    }
+
+    // Stoppa transporten och släpp tangenterna -> allt ska tystna.
+    ph.playing = false;
+    for (int i = 0; i < 400; ++i)
+    {
+        buffer.clear();
+        midi.clear();
+        if (i == 0)
+            for (int n : heldNotes)
+                midi.addEvent (juce::MidiMessage::noteOff (1, n), 0);
+        proc.processBlock (buffer, midi);
+        for (const auto meta : midi)
+            if (meta.getMessage().isNoteOff())
+                ++offCount;
+    }
+    proc.setPlayHead (nullptr);
+    return result;
+}
+
+std::vector<SeqNote> readMidiFile (const juce::File& f, double offsetPpq)
+{
+    std::vector<SeqNote> out;
+    juce::FileInputStream in (f);
+    juce::MidiFile mf;
+    if (! in.openedOk() || ! mf.readFrom (in))
+        return out;
+    const double tpq = mf.getTimeFormat();
+    for (int t = 0; t < mf.getNumTracks(); ++t)
+        for (const auto* e : *mf.getTrack (t))
+            if (e->message.isNoteOn())
+                out.push_back ({ offsetPpq + e->message.getTimeStamp() / tpq, e->message.getNoteNumber() });
+    return out;
+}
+
+bool sameNotes (const std::vector<SeqNote>& a, const std::vector<SeqNote>& b, juce::String& why)
+{
+    if (a.size() != b.size())
+    {
+        why = "antal " + juce::String ((int) a.size()) + " mot " + juce::String ((int) b.size());
+        return false;
+    }
+    for (size_t i = 0; i < a.size(); ++i)
+    {
+        if (a[i].note != b[i].note || std::abs (a[i].ppq - b[i].ppq) > 0.003)
+        {
+            why = "ton " + juce::String ((int) i) + ": " + juce::String (a[i].note) + "@" + juce::String (a[i].ppq, 4)
+                + " mot " + juce::String (b[i].note) + "@" + juce::String (b[i].ppq, 4);
+            return false;
+        }
+    }
+    return true;
+}
+
+int findPreset (StesoLeadProcessor& p, const juce::String& name)
+{
+    for (int i = 0; i < p.getNumPrograms(); ++i)
+        if (p.getProgramName (i) == name)
+            return i;
+    return -1;
+}
+
+void testSequencer()
+{
+    std::cout << "Sekvenser:" << std::endl;
+    std::unique_ptr<StesoLeadProcessor> proc (dynamic_cast<StesoLeadProcessor*> (createPluginFilter()));
+    TestPlayHead ph;
+
+    auto setParam = [&] (const char* id, float value)
+    {
+        auto* p = proc->apvts.getParameter (id);
+        p->setValueNotifyingHost (p->convertTo0to1 (value));
+    };
+
+    // 1. Seq-läge, 7 steg mot 4/4: MIDI ut ska vara identiskt med exporten.
+    const int acid = findPreset (*proc, "Odd Seven Acid");
+    check (acid >= 0, "presetet Odd Seven Acid saknas");
+    proc->setCurrentProgram (acid);
+    setParam (steso::pid::seqMidiOut, 1.0f);
+
+    int ons = 0, offs = 0;
+    const auto live = runTransport (*proc, ph, 8.0, { 48 }, ons, offs);
+    check (ons > 20, "sekvensern spelar för få toner (" + juce::String (ons) + ")");
+    check (ons == offs, "MIDI ut: " + juce::String (ons) + " note on men " + juce::String (offs) + " note off");
+    check (proc->getActiveVoiceCount() == 0, "röster hänger kvar efter stopp");
+
+    // Polymetri: steg 16 (takt 2, slag 1) = mönstersteg 16 % 7 = 2 -> +12 halvtoner.
+    bool foundBar2 = false;
+    for (const auto& n : live)
+        if (std::abs (n.ppq - 4.0) < 0.003)
+            foundBar2 = (n.note == 60);
+    check (foundBar2, "takt 2 börjar inte på mönstersteg 3 (+12) – polymetrin stämmer inte");
+
+    juce::String why;
+    const auto fileAll = proc->writeMidiExport (0.0, 32.0, "test-alla.mid");
+    check (fileAll.existsAsFile(), "MIDI-exporten skapade ingen fil");
+    check (sameNotes (live, readMidiFile (fileAll, 0.0), why), "export takt 1-9 skiljer sig från uppspelningen: " + why);
+
+    // Export mitt i låten (takt 5-9) ska matcha samma del av uppspelningen.
+    std::vector<SeqNote> liveMid;
+    for (const auto& n : live)
+        if (n.ppq >= 16.0 - 1.0e-6 && n.ppq < 32.0)
+            liveMid.push_back (n);
+    const auto fileMid = proc->writeMidiExport (16.0, 32.0, "test-mitt.mid");
+    check (sameNotes (liveMid, readMidiFile (fileMid, 16.0), why), "export takt 5-9 skiljer sig: " + why);
+
+    // Locators från DAW:en läses av.
+    const auto host = proc->getHostInfo();
+    check (host.hasLoop && std::abs (host.loopStart - 16.0) < 1e-9 && std::abs (host.loopEnd - 48.0) < 1e-9,
+           "locators från DAW:en lästes inte");
+
+    // 2. Bypass efter dragning, och tillbaka.
+    proc->sequencerExported();
+    check ((int) proc->apvts.getRawParameterValue (steso::pid::seqMode)->load() == 0, "sekvensern stängs inte av efter export");
+    check (proc->isBypassedByExport(), "bypass-flaggan sätts inte");
+    proc->reenableSequencer();
+    check ((int) proc->apvts.getRawParameterValue (steso::pid::seqMode)->load() == 2, "Slå på igen återställer inte Seq-läget");
+
+    // I bypass ska inkommande toner spela synthen direkt (och inget MIDI ut).
+    proc->sequencerExported();
+    {
+        int o = 0, f = 0;
+        const auto direct = runTransport (*proc, ph, 1.0, { 60 }, o, f);
+        check (o == 0, "MIDI ut skickas trots att sekvensern är av");
+    }
+
+    // 3. Arp, 5 steg upp/ner över 2 oktaver: bara ackordets toner.
+    const int arp = findPreset (*proc, "Five Over Four Arp");
+    proc->setCurrentProgram (arp);
+    setParam (steso::pid::seqMidiOut, 1.0f);
+    const auto arpNotes = runTransport (*proc, ph, 4.0, { 60, 64, 67 }, ons, offs);
+    bool allInChord = ! arpNotes.empty();
+    for (const auto& n : arpNotes)
+    {
+        const int pc = n.note % 12;
+        allInChord = allInChord && (pc == 0 || pc == 4 || pc == 7) && n.note >= 60 && n.note < 84;
+    }
+    check (allInChord, "arpen spelar toner utanför ackordet");
+    check (ons == offs && proc->getActiveVoiceCount() == 0, "arpen lämnar hängande toner");
+
+    // 4. Mönstret sparas med projektet.
+    proc->getPattern().pitch[3] = 5;
+    proc->getPattern().on[4] = false;
+    juce::MemoryBlock state;
+    proc->getStateInformation (state);
+    std::unique_ptr<StesoLeadProcessor> other (dynamic_cast<StesoLeadProcessor*> (createPluginFilter()));
+    other->setStateInformation (state.getData(), (int) state.getSize());
+    check (other->getPattern().pitch[3].load() == 5 && ! other->getPattern().on[4].load(), "mönstret sparas inte med projektet");
+
+    // 5. Euklid 5 av 8 = 5 träffar.
+    steso::seq::Pattern pat;
+    pat.applyEuclid (5, 8, 0);
+    int hits = 0;
+    for (int i = 0; i < 8; ++i)
+        hits += pat.on[(size_t) i].load() ? 1 : 0;
+    check (hits == 5, "euklid 5/8 ger " + juce::String (hits) + " träffar");
+
+    std::cout << "  " << live.size() << " toner i 8 takter, export = uppspelning" << std::endl;
+}
+
 void screenshot (const juce::File& file)
 {
     std::unique_ptr<StesoLeadProcessor> proc (dynamic_cast<StesoLeadProcessor*> (createPluginFilter()));
-    proc->setCurrentProgram (1);
+    proc->setCurrentProgram (findPreset (*proc, "Odd Seven Acid"));
     std::unique_ptr<juce::AudioProcessorEditor> editor (proc->createEditor());
     editor->setSize (StesoLeadEditor::baseWidth, StesoLeadEditor::baseHeight);
     const auto image = editor->createComponentSnapshot (editor->getLocalBounds(), true, 1.0f);
@@ -287,6 +506,7 @@ int main (int argc, char** argv)
     testPresets (wavDir);
     testVoiceModesAndPedal();
     testState();
+    testSequencer();
     if (shot != juce::File())
         screenshot (shot);
 

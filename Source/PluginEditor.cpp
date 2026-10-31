@@ -116,6 +116,8 @@ Control::Control (juce::AudioProcessorValueTreeState& apvts, const juce::String&
         combo = std::make_unique<juce::ComboBox>();
         if (auto* choice = dynamic_cast<juce::AudioParameterChoice*> (param))
             combo->addItemList (choice->choices, 1);
+        else if (dynamic_cast<juce::AudioParameterBool*> (param) != nullptr)
+            combo->addItemList ({ "Off", "On" }, 1);
         comboAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ComboBoxAttachment> (apvts, paramId, *combo);
         combo->setTooltip (param->getName (64));
         addAndMakeVisible (*combo);
@@ -194,7 +196,8 @@ void Section::resized()
 StesoLeadEditor::StesoLeadEditor (StesoLeadProcessor& p)
     : AudioProcessorEditor (&p),
       processor (p),
-      keyboard (p.keyboardState, juce::MidiKeyboardComponent::horizontalKeyboard)
+      keyboard (p.keyboardState, juce::MidiKeyboardComponent::horizontalKeyboard),
+      seqPanel (p)
 {
     using namespace steso;
     setLookAndFeel (&lnf);
@@ -297,6 +300,7 @@ StesoLeadEditor::StesoLeadEditor (StesoLeadProcessor& p)
     keyboard.setColour (juce::MidiKeyboardComponent::keySeparatorLineColourId, steso::ui::colours::background);
     keyboard.setWantsKeyboardFocus (false);
     content.addAndMakeVisible (keyboard);
+    content.addAndMakeVisible (seqPanel);
 
     addAndMakeVisible (content);
     content.setSize (baseWidth, baseHeight);
@@ -307,7 +311,7 @@ StesoLeadEditor::StesoLeadEditor (StesoLeadProcessor& p)
     setSize (baseWidth, baseHeight);
 
     refreshPresetBox();
-    startTimerHz (10);
+    startTimerHz (30);
 }
 
 StesoLeadEditor::~StesoLeadEditor()
@@ -351,8 +355,9 @@ void StesoLeadEditor::resized()
     header.removeFromRight (4);
     prevButton.setBounds (header.removeFromRight (34).reduced (0, 8));
 
-    keyboard.setBounds (r.removeFromBottom (78).reduced (3, 4));
-    r.removeFromBottom (4);
+    keyboard.setBounds (r.removeFromBottom (62).reduced (3, 4));
+    r.removeFromBottom (2);
+    seqPanel.setBounds (r.removeFromBottom (268));
 
     const int rowH = r.getHeight() / 4;
     const int unit = r.getWidth() / 16;   // 16 kolumner totalt per rad
@@ -383,7 +388,10 @@ void StesoLeadEditor::timerCallback()
     {
         lastProgramCounter = counter;
         refreshPresetBox();
+        seqPanel.bindState();
     }
+
+    seqPanel.refresh();
 
     const int v = processor.getActiveVoiceCount();
     if (v != lastVoices)
