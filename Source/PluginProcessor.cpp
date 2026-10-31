@@ -12,6 +12,12 @@ StesoLeadProcessor::StesoLeadProcessor()
     for (auto& n : exportNotes)
         n = 60;
     exportCount = 1;
+
+    // Första ljudet när pluginet öppnas: ett fett lead (värden kan alltid välja annat).
+    const auto& presets = steso::getFactoryPresets();
+    for (size_t i = 0; i < presets.size(); ++i)
+        if (presets[i].name == "Three Osc Lead")
+            setCurrentProgram ((int) i);
 }
 
 bool StesoLeadProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const

@@ -18,6 +18,15 @@ struct BlockParams
     float lfoPitch = 0, lfoFilter = 0, lfoPW = 0, lfoFadeSeconds = 0;
     float ampVel = 0.5f, drift = 0, spread = 0;
     float glideSeconds = 0, bendRange = 2;
+
+    // v1.2 "Fat"
+    int osc3Wave = 0;
+    float osc3Semi = -12, osc3Fine = -5, mix3 = 0;
+    int filterType = 0;          // 0 ladder, 1 Polivoks LP, 2 Polivoks BP
+    float resonance = 0;         // 0..1 (Polivoks)
+    float feedback = 0, warmth = 0;
+    int unison = 1;
+    std::array<float, 4> uniRatios { 1, 1, 1, 1 };
 };
 
 class Voice
@@ -43,8 +52,9 @@ public:
 
     Envelope ampEnv, filterEnv;
 
-    // Renderar och lägger till i L/R. lfo = globalt LFO-värde per sampel. cutoffHz = utjämnat grundvärde.
-    void render (float* left, float* right, int numSamples, const BlockParams& bp,
+    // Renderar i 2x-takt och lägger till i left2x/right2x (2 * numSamples sampel).
+    // lfo/cutoffHz har ett värde per utsampel (1x).
+    void render (float* left2x, float* right2x, int numSamples, const BlockParams& bp,
                  const float* lfo, const float* cutoffHz, float pitchBendSemis, float modWheel);
 
 private:
@@ -57,12 +67,16 @@ private:
     float pan = 0.0f;
     float lfoFade = 1.0f;
 
-    Oscillator osc1, osc2, sub;
-    LadderFilter filter;
+    std::array<Oscillator, 4> osc1, osc2, osc3;   // en per unison-stack
+    Oscillator sub;
+    LadderFilter ladder;
+    PolivoksFilter polivoks;
+    float feedbackState = 0.0f;
     FastRandom rng;
 
     // Analog drift: långsam slumpvandring per oscillator.
-    float driftValue1 = 0, driftValue2 = 0, driftTarget1 = 0, driftTarget2 = 0, driftCutoff = 0;
+    float driftValue1 = 0, driftValue2 = 0, driftValue3 = 0;
+    float driftTarget1 = 0, driftTarget2 = 0, driftTarget3 = 0, driftCutoff = 0;
     int driftCounter = 0;
 };
 
@@ -120,5 +134,6 @@ private:
     FastRandom lfoRng;
 
     juce::SmoothedValue<float, juce::ValueSmoothingTypes::Multiplicative> cutoffSmoothed;
+    HalfbandDecimator decimatorL, decimatorR;
 };
 } // namespace steso::dsp

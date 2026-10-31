@@ -492,10 +492,50 @@ void testSequencer()
     std::cout << "  " << live.size() << " toner i 8 takter, export = uppspelning" << std::endl;
 }
 
+void testStress()
+{
+    std::cout << "Stresstest (slumpade inställningar):" << std::endl;
+    std::unique_ptr<StesoLeadProcessor> proc (dynamic_cast<StesoLeadProcessor*> (createPluginFilter()));
+    juce::Random rnd (777);
+    std::vector<Event> e;
+    for (int n : { 28, 40, 52, 64, 76, 88 })
+        e.push_back ({ 0.0, juce::MidiMessage::noteOn (1, n, 1.0f) });
+    for (int i = 0; i <= 20; ++i)
+        e.push_back ({ 0.05 + i * 0.05, juce::MidiMessage::pitchWheel (1, i * 780) });
+    for (int n : { 28, 40, 52, 64, 76, 88 })
+        e.push_back ({ 1.2, juce::MidiMessage::noteOff (1, n) });
+
+    int worst = 0;
+    double worstCpu = 0.0;
+    for (int round = 0; round < 40; ++round)
+    {
+        for (auto* p : proc->getParameters())
+            p->setValueNotifyingHost (rnd.nextFloat());
+        // Ingen sekvenser här (testas separat), men extrema filter/feedback/unison.
+        proc->apvts.getParameter (steso::pid::seqMode)->setValueNotifyingHost (0.0f);
+        if (round % 3 == 0)
+        {
+            for (const char* id : { steso::pid::resonance, steso::pid::drive, steso::pid::feedback, steso::pid::warmth })
+                proc->apvts.getParameter (id)->setValueNotifyingHost (1.0f);
+            proc->apvts.getParameter (steso::pid::unison)->setValueNotifyingHost (1.0f);
+        }
+
+        const auto r = render (*proc, round % 2 == 0 ? 44100.0 : 96000.0, 197, 1.6, e, nullptr);
+        worstCpu = std::max (worstCpu, r.cpuRatio);
+        if (! r.finite || r.peak > 1.0001f)   // softClip når exakt 1.0 (+ flyttalsavrundning)
+        {
+            ++worst;
+            check (false, "runda " + juce::String (round) + ": " + (r.finite ? "klipper" : "NaN/Inf"));
+        }
+    }
+    std::cout << "  40 rundor, värsta CPU " << juce::String (worstCpu * 100.0, 1) << "% av realtid" << std::endl;
+    check (worstCpu < 0.6, "CPU för hög i värsta fallet");
+}
+
 void screenshot (const juce::File& file)
 {
     std::unique_ptr<StesoLeadProcessor> proc (dynamic_cast<StesoLeadProcessor*> (createPluginFilter()));
-    proc->setCurrentProgram (findPreset (*proc, "Odd Seven Acid"));
+    proc->setCurrentProgram (findPreset (*proc, "Three Osc Lead"));
     std::unique_ptr<juce::AudioProcessorEditor> editor (proc->createEditor());
     editor->setSize (StesoLeadEditor::baseWidth, StesoLeadEditor::baseHeight);
     const auto image = editor->createComponentSnapshot (editor->getLocalBounds(), true, 1.0f);
@@ -525,6 +565,7 @@ int main (int argc, char** argv)
     testVoiceModesAndPedal();
     testState();
     testSequencer();
+    testStress();
     if (shot != juce::File())
         screenshot (shot);
 

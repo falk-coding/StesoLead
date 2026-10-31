@@ -3,6 +3,8 @@
 #include <cmath>
 #include <cstdint>
 #include <algorithm>
+#include <array>
+#include <iterator>
 
 namespace steso::dsp
 {
@@ -193,6 +195,104 @@ struct LadderFilter
         // Kompensera basförlust vid hög resonans (som på originalen, fast mildare).
         return u * (1.0f + 0.45f * k);
     }
+};
+
+// Polivoks-inspirerat 12 dB-filter: tillståndsvariabelt (SVF/TPT) där integratorerna mättar
+// (op-förstärkare som slår i matningen) -> rått, "skrikigt" resonansläge. LP eller BP.
+struct PolivoksFilter
+{
+    float s1 = 0.0f, s2 = 0.0f;
+
+    void reset() noexcept { s1 = s2 = 0.0f; }
+
+    // g = tan(pi * fc / fs), res = 0..1
+    float process (float x, float g, float res, bool bandpass) noexcept
+    {
+        const float k = 2.0f - 1.96f * std::clamp (res, 0.0f, 1.0f);
+        x = softClip (x * 0.8f) * 1.25f;
+
+        const float hp = (x - (k + g) * s1 - s2) / (1.0f + g * (k + g));
+        const float v1 = g * hp;
+        float bp = v1 + s1;
+        // Mättande integrator: begränsar och färgar resonansen.
+        bp = softClip (bp * 0.5f) * 2.0f;
+        s1 = bp + v1;
+        const float v2 = g * bp;
+        const float lp = v2 + s2;
+        s2 = softClip ((lp + v2) * 0.4f) * 2.5f;
+
+        if (std::abs (s1) < 1.0e-15f) s1 = 0.0f;
+        if (std::abs (s2) < 1.0e-15f) s2 = 0.0f;
+
+        return bandpass ? bp * (0.45f + 0.35f * k) : lp;
+    }
+};
+
+// Halvbands-FIR för 2x -> 1x nedsampling (Kaiser-fönster, ~80 dB spärrband).
+class HalfbandDecimator
+{
+public:
+    static constexpr int numTaps = 47;
+
+    HalfbandDecimator()
+    {
+        constexpr int centre = numTaps / 2;
+        constexpr double beta = 8.0;
+        auto besselI0 = [] (double x)
+        {
+            double sum = 1.0, term = 1.0;
+            for (int k = 1; k < 30; ++k)
+            {
+                term *= (x / (2.0 * k)) * (x / (2.0 * k));
+                sum += term;
+            }
+            return sum;
+        };
+
+        double total = 0.0;
+        for (int n = 0; n < numTaps; ++n)
+        {
+            const int m = n - centre;
+            const double sinc = m == 0 ? 0.5 : std::sin (3.14159265358979 * 0.5 * m) / (3.14159265358979 * m);
+            const double r = (double) m / centre;
+            const double w = besselI0 (beta * std::sqrt (std::max (0.0, 1.0 - r * r))) / besselI0 (beta);
+            taps[(size_t) n] = (float) (sinc * w);
+            total += sinc * w;
+        }
+        for (auto& t : taps)
+            t = (float) (t / total);
+    }
+
+    void reset() noexcept { std::fill (std::begin (history), std::end (history), 0.0f); pos = 0; }
+
+    // in: 2*n sampel i 2x-takt, out: n sampel.
+    void process (const float* in, float* out, int n) noexcept
+    {
+        for (int i = 0; i < n; ++i)
+        {
+            push (in[2 * i]);
+            push (in[2 * i + 1]);
+
+            // history[pos .. pos+numTaps) är de senaste numTaps sampelna (dubbelbuffert).
+            const float* h = history + pos;
+            float acc = 0.0f;
+            for (int t = 0; t < numTaps; ++t)
+                acc += taps[(size_t) t] * h[t];
+            out[i] = acc;
+        }
+    }
+
+private:
+    void push (float x) noexcept
+    {
+        history[pos] = x;
+        history[pos + numTaps] = x;
+        if (++pos >= numTaps) pos = 0;
+    }
+
+    std::array<float, numTaps> taps {};
+    float history[2 * numTaps] {};
+    int pos = 0;
 };
 
 // Enkel DC-spärr (högpass ~10 Hz).

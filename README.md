@@ -21,7 +21,18 @@ Ny release: **Actions → Build → Run workflow** med `release_tag` (t.ex. `v1.
 - LFO (sine, triangle, saw, square, S&H) med fade in → pitch, filter, PWM
 - Analog drift per röst, stereospridning
 - Chorus (Juno-stil I/II), stereodelay med lågpass i återkopplingen, reverb
-- 24 fabrikspresets (varav 4 med sekvenser), skalbart GUI, inbyggd klaviatur
+- 35 fabrikspresets (varav 5 med sekvenser), skalbart GUI, inbyggd klaviatur
+
+## Fat-motorn (v1.2)
+- **Tre oscillatorer** (som på Minimoog) + sub-oktav + brus. Osc 3 står på -12 halvtoner som standard.
+- **Filtertyp:** *Ladder* (24 dB, Moog-stil), *Polivoks LP* och *Polivoks BP* (12 dB med mättande integratorer
+  – rått, skrikigt resonansläge inspirerat av den ryska Polivoks).
+- **Feedback:** filterutgången tillbaka in i filtret (Moog-loopen) – morr och tjocklek.
+- **Warmth:** asymmetrisk rörliknande mättning efter filtret (jämna övertoner).
+- **Unison** 1–4 stackar per röst med **Detune** upp till ±25 cent.
+- **2x oversampling** för oscillatorer, filter, feedback och mättning – mindre digital aliasing, varmare drive.
+- 11 nya presets i *Fat Bass*, *Fat Lead*, *Fat Poly* och *Sequence*. Pluginet startar på **Three Osc Lead**.
+- Nya funktioner är avstängda som standard, så äldre presets och projekt låter som förut.
 
 ## Sekvenser / arpeggiator (v1.1)
 - **Seq:** stegen spelas relativt tangenten du håller (transponera live). **Arp:** spelar ackordet du håller

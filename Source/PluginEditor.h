@@ -33,6 +33,7 @@ private:
 
     steso::ui::Section osc1 { "OSC 1", steso::ui::colours::accent };
     steso::ui::Section osc2 { "OSC 2", steso::ui::colours::accent };
+    steso::ui::Section osc3 { "OSC 3", steso::ui::colours::accent };
     steso::ui::Section mixer { "MIXER", steso::ui::colours::accent };
     steso::ui::Section filter { "FILTER", steso::ui::colours::accent2 };
     steso::ui::Section filterEnv { "FILTER ENV", steso::ui::colours::accent2 };

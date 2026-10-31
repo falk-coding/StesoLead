@@ -212,17 +212,25 @@ StesoLeadEditor::StesoLeadEditor (StesoLeadProcessor& p)
     osc2.add (s, pid::osc2Fine, "Fine");
     osc2.add (s, pid::osc2PW, "PW");
 
+    osc3.add (s, pid::osc3Wave, "Wave", true);
+    osc3.add (s, pid::osc3Semi, "Semi");
+    osc3.add (s, pid::osc3Fine, "Fine");
+
     mixer.add (s, pid::mixOsc1, "Osc 1");
     mixer.add (s, pid::mixOsc2, "Osc 2");
+    mixer.add (s, pid::mixOsc3, "Osc 3");
     mixer.add (s, pid::mixSub, "Sub");
     mixer.add (s, pid::mixNoise, "Noise");
 
+    filter.add (s, pid::filterType, "Type", true);
     filter.add (s, pid::cutoff, "Cutoff");
     filter.add (s, pid::resonance, "Reso");
     filter.add (s, pid::drive, "Drive");
     filter.add (s, pid::filterEnv, "Env");
     filter.add (s, pid::keyTrack, "Key");
     filter.add (s, pid::filterVel, "Velocity");
+    filter.add (s, pid::feedback, "Feedback");
+    filter.add (s, pid::warmth, "Warmth");
 
     filterEnv.add (s, pid::fAttack, "Attack");
     filterEnv.add (s, pid::fDecay, "Decay");
@@ -247,6 +255,8 @@ StesoLeadEditor::StesoLeadEditor (StesoLeadProcessor& p)
     voice.add (s, pid::bendRange, "Bend");
     voice.add (s, pid::drift, "Drift");
     voice.add (s, pid::spread, "Spread");
+    voice.add (s, pid::unison, "Unison");
+    voice.add (s, pid::uniDetune, "Detune");
 
     fx.add (s, pid::chorus, "Chorus", true);
     fx.add (s, pid::delayTime, "Time");
@@ -256,7 +266,7 @@ StesoLeadEditor::StesoLeadEditor (StesoLeadProcessor& p)
 
     output.add (s, pid::master, "Volume");
 
-    for (auto* c : std::initializer_list<juce::Component*> { &osc1, &osc2, &mixer, &filter, &filterEnv, &ampEnv,
+    for (auto* c : std::initializer_list<juce::Component*> { &osc1, &osc2, &osc3, &mixer, &filter, &filterEnv, &ampEnv,
                                                              &lfo, &voice, &fx, &output })
         content.addAndMakeVisible (c);
 
@@ -363,12 +373,13 @@ void StesoLeadEditor::resized()
     const int unit = r.getWidth() / 16;   // 16 kolumner totalt per rad
 
     auto row1 = r.removeFromTop (rowH);
-    osc1.setBounds (row1.removeFromLeft (unit * 4));
-    osc2.setBounds (row1.removeFromLeft (unit * 5));
+    osc1.setBounds (row1.removeFromLeft (unit * 3));
+    osc2.setBounds (row1.removeFromLeft (unit * 4));
+    osc3.setBounds (row1.removeFromLeft (unit * 3));
     mixer.setBounds (row1);
 
     auto row2 = r.removeFromTop (rowH);
-    filter.setBounds (row2.removeFromLeft (unit * 9));
+    filter.setBounds (row2.removeFromLeft (unit * 11));
     filterEnv.setBounds (row2);
 
     auto row3 = r.removeFromTop (rowH);
@@ -376,8 +387,8 @@ void StesoLeadEditor::resized()
     lfo.setBounds (row3);
 
     auto row4 = r;
-    voice.setBounds (row4.removeFromLeft (unit * 7));
-    fx.setBounds (row4.removeFromLeft (unit * 7));
+    voice.setBounds (row4.removeFromLeft (unit * 8));
+    fx.setBounds (row4.removeFromLeft (unit * 6));
     output.setBounds (row4);
 }
 

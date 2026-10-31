@@ -164,8 +164,20 @@ juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout()
     seqGroup->addChild (std::make_unique<APC> (id (pid::seqLatch), "Seq Latch", juce::StringArray { "Off", "On" }, 1));
     seqGroup->addChild (std::make_unique<APC> (id (pid::seqMidiOut), "Seq MIDI Out", juce::StringArray { "Off", "On" }, 0));
 
+    // v1.2 "Fat": standardvärdena stänger av allt nytt så att äldre presets/projekt låter som förut.
+    auto fat = std::make_unique<juce::AudioProcessorParameterGroup> ("fat", "Fat", "|");
+    fat->addChild (std::make_unique<APC> (id (pid::osc3Wave), "Osc3 Wave", waveNames, 0));
+    fat->addChild (std::make_unique<API> (id (pid::osc3Semi), "Osc3 Semi", -24, 24, -12));
+    fat->addChild (std::make_unique<APF> (id (pid::osc3Fine), "Osc3 Fine", Range (-50.0f, 50.0f), -5.0f, withLabel ("ct")));
+    fat->addChild (std::make_unique<APF> (id (pid::mixOsc3), "Mix Osc3", Range (0.0f, 1.0f), 0.0f, percentAttr()));
+    fat->addChild (std::make_unique<APC> (id (pid::filterType), "Filter Type", filterTypeNames, 0));
+    fat->addChild (std::make_unique<APF> (id (pid::feedback), "Feedback", Range (0.0f, 1.0f), 0.0f, percentAttr()));
+    fat->addChild (std::make_unique<APF> (id (pid::warmth), "Warmth", Range (0.0f, 1.0f), 0.0f, percentAttr()));
+    fat->addChild (std::make_unique<API> (id (pid::unison), "Unison", 1, 4, 1));
+    fat->addChild (std::make_unique<APF> (id (pid::uniDetune), "Unison Detune", Range (0.0f, 1.0f), 0.3f, percentAttr()));
+
     layout.add (std::move (osc1), std::move (osc2), std::move (mix), std::move (filter), std::move (fenv),
-                std::move (aenv), std::move (lfo), std::move (voice), std::move (fx), std::move (seqGroup));
+                std::move (aenv), std::move (lfo), std::move (voice), std::move (fx), std::move (seqGroup), std::move (fat));
     return layout;
 }
 
@@ -196,5 +208,8 @@ void ParamPointers::bind (juce::AudioProcessorValueTreeState& s)
     seqGate = p (pid::seqGate); arpOrder = p (pid::arpOrder); arpOctaves = p (pid::arpOctaves);
     seqLength = p (pid::seqLength); seqAccLen = p (pid::seqAccLen); seqGateLen = p (pid::seqGateLen);
     seqLatch = p (pid::seqLatch); seqMidiOut = p (pid::seqMidiOut);
+    osc3Wave = p (pid::osc3Wave); osc3Semi = p (pid::osc3Semi); osc3Fine = p (pid::osc3Fine);
+    mixOsc3 = p (pid::mixOsc3); filterType = p (pid::filterType); feedback = p (pid::feedback);
+    warmth = p (pid::warmth); unison = p (pid::unison); uniDetune = p (pid::uniDetune);
 }
 } // namespace steso

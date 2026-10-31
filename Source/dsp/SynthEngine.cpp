@@ -21,20 +21,29 @@ void Voice::reset()
 {
     ampEnv.reset();
     filterEnv.reset();
-    filter.reset();
+    ladder.reset();
+    polivoks.reset();
+    feedbackState = 0.0f;
     held = false;
-    driftValue1 = driftValue2 = driftTarget1 = driftTarget2 = driftCutoff = 0.0f;
+    driftValue1 = driftValue2 = driftValue3 = 0.0f;
+    driftTarget1 = driftTarget2 = driftTarget3 = driftCutoff = 0.0f;
 }
 
 void Voice::start (int newNote, float newVelocity, float startPitch, bool retrigger, bool glideFromPrevious)
 {
     if (! isActive())
     {
-        // Fri löpande oscillatorer med slumpad fas, som en analog synth.
-        osc1.phase = rng.unipolar();
-        osc2.phase = rng.unipolar();
-        sub.phase = osc1.phase * 0.5f;
-        filter.reset();
+        // Fritt löpande oscillatorer med slumpad fas, som en analog synth.
+        for (size_t u = 0; u < osc1.size(); ++u)
+        {
+            osc1[u].phase = rng.unipolar();
+            osc2[u].phase = rng.unipolar();
+            osc3[u].phase = rng.unipolar();
+        }
+        sub.phase = osc1[0].phase * 0.5f;
+        ladder.reset();
+        polivoks.reset();
+        feedbackState = 0.0f;
         driftCutoff = rng.bipolar();
     }
 
@@ -71,12 +80,13 @@ void Voice::kill()
     reset();
 }
 
-void Voice::render (float* left, float* right, int numSamples, const BlockParams& bp,
+void Voice::render (float* left2x, float* right2x, int numSamples, const BlockParams& bp,
                     const float* lfo, const float* cutoffHz, float pitchBendSemis, float modWheel)
 {
     if (! isActive())
         return;
 
+    const float fs2 = sampleRate * 2.0f;
     const float glideCoef = bp.glideSeconds > 0.002f ? std::exp (-3.0f / (bp.glideSeconds * sampleRate)) : 0.0f;
     const float fadeInc = bp.lfoFadeSeconds > 0.002f ? 1.0f / (bp.lfoFadeSeconds * sampleRate) : 1.0f;
     const float driftCents = bp.drift * 0.12f;      // upp till ±12 cent
@@ -85,8 +95,17 @@ void Voice::render (float* left, float* right, int numSamples, const BlockParams
     const float ampScale = 1.0f - bp.ampVel + bp.ampVel * velocity;
     const float preGain = 1.0f + bp.drive * 4.0f;
     const float postGain = 1.0f / (1.0f + bp.drive * 1.8f);
-    const float nyquistLimit = sampleRate * 0.45f;
-    const float piOverFs = juce::MathConstants<float>::pi / sampleRate;
+    const float cutoffLimit = std::min (fs2 * 0.45f, 24000.0f);
+    const float piOverFs2 = juce::MathConstants<float>::pi / fs2;
+
+    const int stacks = std::clamp (bp.unison, 1, 4);
+    const float stackNorm = 1.0f / std::sqrt ((float) stacks);
+    const float fbGain = bp.feedback * 1.6f;
+    const bool useWarmth = bp.warmth > 0.001f;
+    const float warmGain = 1.0f + bp.warmth * 3.0f;
+    const float warmBias = 0.25f * bp.warmth;
+    const float warmBiasOut = softClip (warmBias);
+    const float warmNorm = 1.0f / (1.0f + bp.warmth * 1.2f);
 
     const float p = std::clamp (pan * bp.spread, -1.0f, 1.0f);
     const float angle = (p + 1.0f) * juce::MathConstants<float>::pi * 0.25f;
@@ -95,15 +114,17 @@ void Voice::render (float* left, float* right, int numSamples, const BlockParams
 
     for (int i = 0; i < numSamples; ++i)
     {
-        // Långsam drift: nya mål ungefär fyra gånger per sekund.
+        // Långsam drift: nya mål några gånger per sekund.
         if (--driftCounter <= 0)
         {
             driftCounter = (int) (sampleRate * (0.15f + 0.2f * rng.unipolar()));
             driftTarget1 = rng.bipolar();
             driftTarget2 = rng.bipolar();
+            driftTarget3 = rng.bipolar();
         }
         driftValue1 += (driftTarget1 - driftValue1) * driftSmooth;
         driftValue2 += (driftTarget2 - driftValue2) * driftSmooth;
+        driftValue3 += (driftTarget3 - driftValue3) * driftSmooth;
 
         pitch = targetPitch + (pitch - targetPitch) * glideCoef;
         lfoFade = std::min (1.0f, lfoFade + fadeInc);
@@ -113,20 +134,15 @@ void Voice::render (float* left, float* right, int numSamples, const BlockParams
 
         const float n1 = base + bp.osc1Octave * 12.0f + driftValue1 * driftCents;
         const float n2 = base + bp.osc2Semi + bp.osc2Fine * 0.01f + driftValue2 * driftCents;
+        const float n3 = base + bp.osc3Semi + bp.osc3Fine * 0.01f + driftValue3 * driftCents;
 
-        const float dt1 = std::min (midiToHz (n1) / sampleRate, 0.45f);
-        const float dt2 = std::min (midiToHz (n2) / sampleRate, 0.45f);
+        const float dt1 = std::min (midiToHz (n1) / fs2, 0.45f);
+        const float dt2 = std::min (midiToHz (n2) / fs2, 0.45f);
+        const float dt3 = bp.mix3 > 0.0f ? std::min (midiToHz (n3) / fs2, 0.45f) : 0.0f;
 
         const float pwMod = l * bp.lfoPW * 0.45f;
         const float pw1 = std::clamp (bp.osc1PW + pwMod, 0.05f, 0.95f);
         const float pw2 = std::clamp (bp.osc2PW + pwMod, 0.05f, 0.95f);
-
-        const float s1 = osc1.process (bp.osc1Wave, dt1, pw1);
-        const float s2 = osc2.process (bp.osc2Wave, dt2, pw2);
-        const float s3 = sub.process (Oscillator::square, dt1 * 0.5f, 0.5f);
-        const float noise = rng.bipolar();
-
-        const float mixed = (s1 * bp.mix1 + s2 * bp.mix2 + s3 * bp.mixSub + noise * bp.mixNoise * 0.7f) * 0.5f;
 
         const float fe = filterEnv.process();
         const float ae = ampEnv.process();
@@ -137,14 +153,49 @@ void Voice::render (float* left, float* right, int numSamples, const BlockParams
                             + l * bp.lfoFilter * 3.0f
                             + driftCutoff * bp.drift * 0.1f;
 
-        const float fc = std::clamp (cutoffHz[i] * std::exp2 (octaves), 15.0f, nyquistLimit);
-        const float g = std::tan (fc * piOverFs);
+        const float fc = std::clamp (cutoffHz[i] * std::exp2 (octaves), 15.0f, cutoffLimit);
+        const float g = std::tan (fc * piOverFs2);
+        const float gain = ae * ampScale;
 
-        const float y = filter.process (mixed * preGain, g, bp.resonanceK) * postGain;
-        const float out = y * ae * ampScale;
+        // Två delsampel i 2x-takt: oscillatorer, filter, feedback och mättning.
+        for (int sub2 = 0; sub2 < 2; ++sub2)
+        {
+            float s1 = 0.0f, s2 = 0.0f, s3 = 0.0f;
+            for (int u = 0; u < stacks; ++u)
+            {
+                const float r = bp.uniRatios[(size_t) u];
+                s1 += osc1[(size_t) u].process (bp.osc1Wave, std::min (dt1 * r, 0.45f), pw1);
+                // Osc 2 får stackarna i omvänd ordning -> mindre fasning mellan oscillatorerna.
+                s2 += osc2[(size_t) u].process (bp.osc2Wave, std::min (dt2 * bp.uniRatios[(size_t) (stacks - 1 - u)], 0.45f), pw2);
+                if (dt3 > 0.0f)
+                    s3 += osc3[(size_t) u].process (bp.osc3Wave, std::min (dt3 * r, 0.45f), 0.5f);
+            }
+            s1 *= stackNorm;
+            s2 *= stackNorm;
+            s3 *= stackNorm;
 
-        left[i] += out * gainL;
-        right[i] += out * gainR;
+            const float subOsc = sub.process (Oscillator::square, dt1 * 0.5f, 0.5f);
+            const float noise = rng.bipolar();
+
+            const float mixed = (s1 * bp.mix1 + s2 * bp.mix2 + s3 * bp.mix3 + subOsc * bp.mixSub
+                                 + noise * bp.mixNoise * 0.7f) * 0.5f;
+
+            // Moog-loopen: filterutgången tillbaka in i filtret.
+            const float x = mixed * preGain + feedbackState * fbGain;
+
+            float y = bp.filterType == 0 ? ladder.process (x, g, bp.resonanceK)
+                                         : polivoks.process (x, g, bp.resonance, bp.filterType == 2);
+            y *= postGain;
+
+            if (useWarmth)
+                y = (softClip (y * warmGain + warmBias) - warmBiasOut) * warmNorm;
+
+            feedbackState = y;
+
+            const float out = y * gain;
+            left2x[2 * i + sub2] += out * gainL;
+            right2x[2 * i + sub2] += out * gainR;
+        }
 
         if (! ampEnv.isActive())
         {
@@ -164,6 +215,8 @@ void SynthEngine::prepare (double sr, int)
         v.prepare (sampleRate, seed += 0x9E3779B9u);
 
     lfoRng.seed (0xC0FFEEu);
+    decimatorL.reset();
+    decimatorR.reset();
     cutoffSmoothed.reset (sr, 0.02);
     cutoffSmoothed.setCurrentAndTargetValue (2500.0f);
     reset();
@@ -173,6 +226,8 @@ void SynthEngine::reset()
 {
     for (auto& v : voices)
         v.reset();
+    decimatorL.reset();
+    decimatorR.reset();
 
     stackSize = 0;
     sustainPedal = false;
@@ -208,6 +263,25 @@ void SynthEngine::updateBlockParams (const ParamPointers& p)
 
     // Resonans 0..1 -> k 0..4.15 (självsvänger längst upp).
     bp.resonanceK = 4.15f * p.resonance->load();
+    bp.resonance = p.resonance->load();
+
+    bp.osc3Wave = (int) p.osc3Wave->load();
+    bp.osc3Semi = p.osc3Semi->load();
+    bp.osc3Fine = p.osc3Fine->load();
+    bp.mix3 = p.mixOsc3->load();
+    bp.filterType = juce::jlimit (0, 2, (int) p.filterType->load());
+    bp.feedback = p.feedback->load();
+    bp.warmth = p.warmth->load();
+    bp.unison = juce::jlimit (1, 4, (int) p.unison->load());
+    {
+        // Unison: stackarna sprids symmetriskt, upp till ±25 cent.
+        const float cents = p.uniDetune->load() * 25.0f;
+        for (int u = 0; u < 4; ++u)
+        {
+            const float pos = bp.unison > 1 ? ((float) u / (float) (bp.unison - 1)) * 2.0f - 1.0f : 0.0f;
+            bp.uniRatios[(size_t) u] = std::exp2 (pos * cents / 1200.0f);
+        }
+    }
     bp.drive = p.drive->load();
     bp.envAmount = p.filterEnv->load();
     bp.keyTrack = p.keyTrack->load();
@@ -303,8 +377,19 @@ void SynthEngine::renderSegment (float* left, float* right, int start, int numSa
             cutoff[i] = cutoffSmoothed.getNextValue();
         }
 
+        // Rösterna renderas i 2x-takt och decimeras sedan (mindre aliasing, varmare drive/filter).
+        float l2[controlChunk * 2], r2[controlChunk * 2], dl[controlChunk], dr[controlChunk];
+        std::fill (l2, l2 + 2 * n, 0.0f);
+        std::fill (r2, r2 + 2 * n, 0.0f);
         for (auto& v : voices)
-            v.render (left + start, right + start, n, bp, lfo, cutoff, bendSemis, modWheel);
+            v.render (l2, r2, n, bp, lfo, cutoff, bendSemis, modWheel);
+        decimatorL.process (l2, dl, n);
+        decimatorR.process (r2, dr, n);
+        for (int i = 0; i < n; ++i)
+        {
+            left[start + i] += dl[i];
+            right[start + i] += dr[i];
+        }
 
         start += n;
         numSamples -= n;

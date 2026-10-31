@@ -59,6 +59,17 @@ namespace pid
     inline constexpr const char* reverbMix  = "reverbMix";
     inline constexpr const char* master     = "master";
 
+    // v1.2 "Fat"
+    inline constexpr const char* osc3Wave    = "osc3Wave";
+    inline constexpr const char* osc3Semi    = "osc3Semi";
+    inline constexpr const char* osc3Fine    = "osc3Fine";
+    inline constexpr const char* mixOsc3     = "mixOsc3";
+    inline constexpr const char* filterType  = "filterType";
+    inline constexpr const char* feedback    = "feedback";
+    inline constexpr const char* warmth      = "warmth";
+    inline constexpr const char* unison      = "unison";
+    inline constexpr const char* uniDetune   = "uniDetune";
+
     inline constexpr const char* seqMode     = "seqMode";
     inline constexpr const char* seqRate     = "seqRate";
     inline constexpr const char* seqSwing    = "seqSwing";
@@ -76,6 +87,7 @@ inline const juce::StringArray waveNames { "Saw", "Square", "Triangle", "Sine" }
 inline const juce::StringArray lfoWaveNames { "Sine", "Triangle", "Saw", "Square", "S&H" };
 inline const juce::StringArray voiceModeNames { "Poly", "Mono", "Legato" };
 inline const juce::StringArray chorusNames { "Off", "I", "II" };
+inline const juce::StringArray filterTypeNames { "Ladder", "Polivoks LP", "Polivoks BP" };
 
 juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
 
@@ -100,6 +112,9 @@ struct ParamPointers
     std::atomic<float>* seqGate {}; std::atomic<float>* arpOrder {}; std::atomic<float>* arpOctaves {};
     std::atomic<float>* seqLength {}; std::atomic<float>* seqAccLen {}; std::atomic<float>* seqGateLen {};
     std::atomic<float>* seqLatch {}; std::atomic<float>* seqMidiOut {};
+    std::atomic<float>* osc3Wave {}; std::atomic<float>* osc3Semi {}; std::atomic<float>* osc3Fine {};
+    std::atomic<float>* mixOsc3 {}; std::atomic<float>* filterType {}; std::atomic<float>* feedback {};
+    std::atomic<float>* warmth {}; std::atomic<float>* unison {}; std::atomic<float>* uniDetune {};
 
     void bind (juce::AudioProcessorValueTreeState& apvts);
 };
