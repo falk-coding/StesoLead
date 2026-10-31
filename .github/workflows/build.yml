@@ -1,7 +1,8 @@
 name: Build
 
-# Linux: bygge + tester + pluginval vid varje push (billigt, 1x minuter).
-# macOS: körs manuellt ("Run workflow") eller när en tagg v* pushas (10x minuter på privata repon).
+# Repot är publikt -> byggminuterna är gratis. Alla tre jobben körs vid varje push.
+# Linux = testmaskin (automatiska tester + pluginval). Leveranser = macOS och Windows.
+# Release: pusha en tagg v* eller kör "Run workflow" med release_tag.
 on:
   push:
     branches: [main]
@@ -25,7 +26,6 @@ jobs:
   linux:
     name: Linux – tester och pluginval
     runs-on: ubuntu-24.04
-    if: github.event_name != 'workflow_dispatch'
     steps:
       - uses: actions/checkout@v4
 
@@ -69,7 +69,6 @@ jobs:
   macos:
     name: macOS – VST3, AU och fristående app
     runs-on: macos-15
-    if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/v')
     steps:
       - uses: actions/checkout@v4
 
@@ -131,5 +130,60 @@ jobs:
           name: StesoLead ${{ inputs.release_tag != '' && inputs.release_tag || github.ref_name }}
           files: StesoLead-mac.zip
           body: |
-            Ladda ner **StesoLead-mac.zip**, packa upp och dubbelklicka på **Installera.command**
-            (första gången: högerklicka → Öppna). Starta om Reason och skanna plugins.
+            **Mac:** ladda ner **StesoLead-mac.zip**, packa upp och dubbelklicka på **Installera.command**
+            (första gången: högerklicka → Öppna). Starta om Reason.
+
+            **Windows:** ladda ner **StesoLead-windows.zip**, packa upp och dubbelklicka på **Installera.bat**
+            (godkänn administratörsfrågan). Starta om din DAW.
+
+  windows:
+    name: Windows – VST3 och fristående app
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache för JUCE
+        uses: actions/cache@v4
+        with:
+          path: build/_deps
+          key: juce-win-${{ hashFiles('CMakeLists.txt') }}
+
+      - name: Bygg (x64, statisk runtime – kräver inget extra installerat)
+        shell: bash
+        run: |
+          cmake -S . -B build -G "Visual Studio 17 2022" -A x64 -DSTESO_BUILD_TESTS=OFF
+          cmake --build build --config Release --parallel
+
+      - name: pluginval (VST3, strikthet 10)
+        shell: bash
+        run: |
+          curl -sSL -o pluginval.zip https://github.com/Tracktion/pluginval/releases/latest/download/pluginval_Windows.zip
+          unzip -q pluginval.zip
+          ./pluginval.exe --strictness-level 10 --validate-in-process --timeout-ms 600000 \
+            --validate build/StesoLead_artefacts/Release/VST3/StesoLead.vst3
+
+      - name: Paketera
+        shell: pwsh
+        run: |
+          $A = "build/StesoLead_artefacts/Release"
+          $P = "StesoLead-windows"
+          New-Item -ItemType Directory -Force -Path $P | Out-Null
+          Copy-Item -Recurse "$A/VST3/StesoLead.vst3" "$P/"
+          Copy-Item "$A/Standalone/StesoLead.exe" "$P/"
+          Copy-Item packaging/windows/INSTALLERA.txt, packaging/windows/Installera.bat "$P/"
+          Compress-Archive -Path $P -DestinationPath StesoLead-windows.zip
+
+      - name: Ladda upp
+        uses: actions/upload-artifact@v4
+        with:
+          name: StesoLead-windows
+          path: StesoLead-windows.zip
+          retention-days: 30
+
+      - name: Release
+        if: startsWith(github.ref, 'refs/tags/v') || inputs.release_tag != ''
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.release_tag != '' && inputs.release_tag || github.ref_name }}
+          name: StesoLead ${{ inputs.release_tag != '' && inputs.release_tag || github.ref_name }}
+          files: StesoLead-windows.zip

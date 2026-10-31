@@ -11,6 +11,9 @@ project(StesoLead VERSION 1.0.0 LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# Windows: statisk C++-runtime så att pluginet fungerar utan Visual C++ Redistributable.
+set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+
 # JUCE: använd lokal kopia om JUCE_DIR är satt, annars hämta från GitHub.
 if(DEFINED JUCE_DIR)
     add_subdirectory(${JUCE_DIR} ${CMAKE_BINARY_DIR}/juce)

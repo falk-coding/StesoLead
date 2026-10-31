@@ -1,13 +1,17 @@
 # StesoLead
 
-Polyfon analog-inspirerad synth som VST3/AU-plugin (macOS) byggd med [JUCE](https://juce.com).
+Polyfon analog-inspirerad synth som VST3/AU-plugin (macOS och Windows) byggd med [JUCE](https://juce.com).
 
-## Ladda ner och installera (Mac)
-1. **Actions** → **Build** → **Run workflow** (eller pusha en tagg `v*` för en release).
-2. Ladda ner `StesoLead-mac` när bygget är klart, packa upp och dubbelklicka på `Installera.command`.
-3. Starta om Reason → Instruments → Falk → StesoLead.
+## Ladda ner och installera
+Senaste versionen finns under **Releases** (höger sida på repots startsida).
 
-Detaljer: `packaging/mac/INSTALLERA.txt`.
+- **Mac:** `StesoLead-mac.zip` → packa upp → dubbelklicka på `Installera.command` (första gången: högerklicka → Öppna).
+- **Windows:** `StesoLead-windows.zip` → packa upp → dubbelklicka på `Installera.bat`.
+
+Starta sedan om Reason/din DAW → Instruments → Falk → StesoLead.
+Detaljer: `packaging/mac/INSTALLERA.txt` och `packaging/windows/INSTALLERA.txt`.
+
+Ny release: **Actions → Build → Run workflow** med `release_tag` (t.ex. `v1.0.1`), eller pusha en tagg `v*`.
 
 ## Funktioner (v1.0)
 - 8 röster, Poly / Mono / Legato, glide, sustainpedal, pitchbend (1–12 st), modhjul → vibrato
