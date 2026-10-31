@@ -79,7 +79,7 @@ jobs:
           path: build/_deps
           key: juce-mac-${{ hashFiles('CMakeLists.txt') }}
 
-      - name: Bygg (universal: Apple Silicon + Intel)
+      - name: "Bygg (universal: Apple Silicon + Intel)"
         run: |
           cmake -S . -B build -G Xcode -DSTESO_BUILD_TESTS=OFF
           cmake --build build --config Release --parallel -- -quiet
