@@ -1,0 +1,90 @@
+#pragma once
+
+#include <juce_audio_processors/juce_audio_processors.h>
+
+namespace steso
+{
+// Parameter-ID:n. Ändra aldrig ett befintligt ID – då tappar sparade projekt sina värden.
+namespace pid
+{
+    inline constexpr const char* osc1Wave   = "osc1Wave";
+    inline constexpr const char* osc1Octave = "osc1Octave";
+    inline constexpr const char* osc1PW     = "osc1PW";
+
+    inline constexpr const char* osc2Wave   = "osc2Wave";
+    inline constexpr const char* osc2Semi   = "osc2Semi";
+    inline constexpr const char* osc2Fine   = "osc2Fine";
+    inline constexpr const char* osc2PW     = "osc2PW";
+
+    inline constexpr const char* mixOsc1    = "mixOsc1";
+    inline constexpr const char* mixOsc2    = "mixOsc2";
+    inline constexpr const char* mixSub     = "mixSub";
+    inline constexpr const char* mixNoise   = "mixNoise";
+
+    inline constexpr const char* cutoff     = "cutoff";
+    inline constexpr const char* resonance  = "resonance";
+    inline constexpr const char* drive      = "drive";
+    inline constexpr const char* filterEnv  = "filterEnv";
+    inline constexpr const char* keyTrack   = "keyTrack";
+    inline constexpr const char* filterVel  = "filterVel";
+
+    inline constexpr const char* fAttack    = "fAttack";
+    inline constexpr const char* fDecay     = "fDecay";
+    inline constexpr const char* fSustain   = "fSustain";
+    inline constexpr const char* fRelease   = "fRelease";
+
+    inline constexpr const char* aAttack    = "aAttack";
+    inline constexpr const char* aDecay     = "aDecay";
+    inline constexpr const char* aSustain   = "aSustain";
+    inline constexpr const char* aRelease   = "aRelease";
+    inline constexpr const char* ampVel     = "ampVel";
+
+    inline constexpr const char* lfoWave    = "lfoWave";
+    inline constexpr const char* lfoRate    = "lfoRate";
+    inline constexpr const char* lfoFade    = "lfoFade";
+    inline constexpr const char* lfoPitch   = "lfoPitch";
+    inline constexpr const char* lfoFilter  = "lfoFilter";
+    inline constexpr const char* lfoPW      = "lfoPW";
+
+    inline constexpr const char* voiceMode  = "voiceMode";
+    inline constexpr const char* glide      = "glide";
+    inline constexpr const char* bendRange  = "bendRange";
+    inline constexpr const char* drift      = "drift";
+    inline constexpr const char* spread     = "spread";
+
+    inline constexpr const char* chorus     = "chorus";
+    inline constexpr const char* delayTime  = "delayTime";
+    inline constexpr const char* delayFb    = "delayFb";
+    inline constexpr const char* delayMix   = "delayMix";
+    inline constexpr const char* reverbMix  = "reverbMix";
+    inline constexpr const char* master     = "master";
+} // namespace pid
+
+inline const juce::StringArray waveNames { "Saw", "Square", "Triangle", "Sine" };
+inline const juce::StringArray lfoWaveNames { "Sine", "Triangle", "Saw", "Square", "S&H" };
+inline const juce::StringArray voiceModeNames { "Poly", "Mono", "Legato" };
+inline const juce::StringArray chorusNames { "Off", "I", "II" };
+
+juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
+
+// Alla parametrar som motorn läser, som råa pekare (snabbt och trådsäkert).
+struct ParamPointers
+{
+    std::atomic<float>* osc1Wave {}; std::atomic<float>* osc1Octave {}; std::atomic<float>* osc1PW {};
+    std::atomic<float>* osc2Wave {}; std::atomic<float>* osc2Semi {}; std::atomic<float>* osc2Fine {}; std::atomic<float>* osc2PW {};
+    std::atomic<float>* mixOsc1 {}; std::atomic<float>* mixOsc2 {}; std::atomic<float>* mixSub {}; std::atomic<float>* mixNoise {};
+    std::atomic<float>* cutoff {}; std::atomic<float>* resonance {}; std::atomic<float>* drive {};
+    std::atomic<float>* filterEnv {}; std::atomic<float>* keyTrack {}; std::atomic<float>* filterVel {};
+    std::atomic<float>* fAttack {}; std::atomic<float>* fDecay {}; std::atomic<float>* fSustain {}; std::atomic<float>* fRelease {};
+    std::atomic<float>* aAttack {}; std::atomic<float>* aDecay {}; std::atomic<float>* aSustain {}; std::atomic<float>* aRelease {};
+    std::atomic<float>* ampVel {};
+    std::atomic<float>* lfoWave {}; std::atomic<float>* lfoRate {}; std::atomic<float>* lfoFade {};
+    std::atomic<float>* lfoPitch {}; std::atomic<float>* lfoFilter {}; std::atomic<float>* lfoPW {};
+    std::atomic<float>* voiceMode {}; std::atomic<float>* glide {}; std::atomic<float>* bendRange {};
+    std::atomic<float>* drift {}; std::atomic<float>* spread {};
+    std::atomic<float>* chorus {}; std::atomic<float>* delayTime {}; std::atomic<float>* delayFb {};
+    std::atomic<float>* delayMix {}; std::atomic<float>* reverbMix {}; std::atomic<float>* master {};
+
+    void bind (juce::AudioProcessorValueTreeState& apvts);
+};
+} // namespace steso

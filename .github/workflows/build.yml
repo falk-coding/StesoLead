@@ -1,0 +1,135 @@
+name: Build
+
+# Linux: bygge + tester + pluginval vid varje push (billigt, 1x minuter).
+# macOS: körs manuellt ("Run workflow") eller när en tagg v* pushas (10x minuter på privata repon).
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Skapa en release med denna tagg (t.ex. v1.0.1). Lämna tomt för bara nedladdningsbar artefakt."
+        required: false
+        default: ""
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  linux:
+    name: Linux – tester och pluginval
+    runs-on: ubuntu-24.04
+    if: github.event_name != 'workflow_dispatch'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Installera beroenden
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q ninja-build libasound2-dev libfreetype-dev libfontconfig1-dev \
+            libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libxext-dev libxcomposite-dev xvfb
+
+      - name: Cache för JUCE
+        uses: actions/cache@v4
+        with:
+          path: build/_deps
+          key: juce-linux-${{ hashFiles('CMakeLists.txt') }}
+
+      - name: Bygg
+        run: |
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+          cmake --build build --parallel
+
+      - name: Tester (presets, röster, sparat läge, skärmdump)
+        run: |
+          mkdir -p out
+          cd out
+          xvfb-run -a ../build/StesoLeadTests_artefacts/Release/StesoLeadTests --wav-dir ljudprov --screenshot StesoLead.png
+
+      - name: pluginval (VST3, strikthet 10)
+        run: |
+          curl -sSL -o pluginval.zip https://github.com/Tracktion/pluginval/releases/latest/download/pluginval_Linux.zip
+          unzip -q pluginval.zip
+          xvfb-run -a ./pluginval --strictness-level 10 --validate-in-process --timeout-ms 600000 \
+            --validate build/StesoLead_artefacts/Release/VST3/StesoLead.vst3
+
+      - name: Ladda upp ljudprov och skärmdump
+        uses: actions/upload-artifact@v4
+        with:
+          name: StesoLead-ljudprov-och-skarmdump
+          path: out/
+          retention-days: 14
+
+  macos:
+    name: macOS – VST3, AU och fristående app
+    runs-on: macos-15
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache för JUCE
+        uses: actions/cache@v4
+        with:
+          path: build/_deps
+          key: juce-mac-${{ hashFiles('CMakeLists.txt') }}
+
+      - name: Bygg (universal: Apple Silicon + Intel)
+        run: |
+          cmake -S . -B build -G Xcode -DSTESO_BUILD_TESTS=OFF
+          cmake --build build --config Release --parallel -- -quiet
+
+      - name: Signera ad hoc
+        run: |
+          A=build/StesoLead_artefacts/Release
+          for b in "$A/VST3/StesoLead.vst3" "$A/AU/StesoLead.component" "$A/Standalone/StesoLead.app"; do
+            codesign --force --deep --sign - "$b"
+            codesign --verify --verbose "$b"
+          done
+          lipo -info "$A/VST3/StesoLead.vst3/Contents/MacOS/StesoLead"
+
+      - name: pluginval (VST3) och auval (AU)
+        run: |
+          A=build/StesoLead_artefacts/Release
+          curl -sSL -o pluginval.zip https://github.com/Tracktion/pluginval/releases/latest/download/pluginval_macOS.zip
+          unzip -q pluginval.zip
+          ./pluginval.app/Contents/MacOS/pluginval --strictness-level 10 --validate-in-process --timeout-ms 600000 \
+            --validate "$A/VST3/StesoLead.vst3"
+          mkdir -p ~/Library/Audio/Plug-Ins/Components
+          cp -R "$A/AU/StesoLead.component" ~/Library/Audio/Plug-Ins/Components/
+          killall -9 AudioComponentRegistrar || true
+          sleep 3
+          auval -v aumu Stsl Falk
+
+      - name: Paketera
+        run: |
+          A=build/StesoLead_artefacts/Release
+          P=StesoLead-mac
+          mkdir -p "$P"
+          cp -R "$A/VST3/StesoLead.vst3" "$A/AU/StesoLead.component" "$A/Standalone/StesoLead.app" "$P/"
+          cp packaging/mac/Installera.command packaging/mac/INSTALLERA.txt "$P/"
+          chmod +x "$P/Installera.command"
+          ditto -c -k --sequesterRsrc --keepParent "$P" StesoLead-mac.zip
+
+      - name: Ladda upp
+        uses: actions/upload-artifact@v4
+        with:
+          name: StesoLead-mac
+          path: StesoLead-mac.zip
+          retention-days: 30
+
+      - name: Release
+        if: startsWith(github.ref, 'refs/tags/v') || inputs.release_tag != ''
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.release_tag != '' && inputs.release_tag || github.ref_name }}
+          name: StesoLead ${{ inputs.release_tag != '' && inputs.release_tag || github.ref_name }}
+          files: StesoLead-mac.zip
+          body: |
+            Ladda ner **StesoLead-mac.zip**, packa upp och dubbelklicka på **Installera.command**
+            (första gången: högerklicka → Öppna). Starta om Reason och skanna plugins.

@@ -1,0 +1,25 @@
+StesoLead – installation på Mac
+================================
+
+Enklast:
+1. Dubbelklicka på "Installera.command".
+   Första gången säger macOS att den inte kan öppnas → högerklicka på filen → Öppna → Öppna.
+   (Eller: Systeminställningar → Integritet och säkerhet → "Öppna ändå".)
+2. Starta om Reason. Pluginet finns under Instruments → Falk → StesoLead.
+
+Manuellt (om du hellre vill):
+1. Kopiera StesoLead.vst3 till  ~/Library/Audio/Plug-Ins/VST3/
+   Kopiera StesoLead.component till  ~/Library/Audio/Plug-Ins/Components/
+2. Öppna Terminal och kör:
+   xattr -dr com.apple.quarantine ~/Library/Audio/Plug-Ins/VST3/StesoLead.vst3 ~/Library/Audio/Plug-Ins/Components/StesoLead.component
+3. Starta om Reason.
+
+Varför behövs steg 2? Pluginet är inte signerat med ett betalt Apple-utvecklarkonto,
+så macOS spärrar filer som laddats ner från internet tills spärren tas bort.
+
+Fristående app: StesoLead.app fungerar utan Reason (välj ljudkort och MIDI under Options).
+
+Tips i pluginet:
+- Dubbelklicka på en ratt = tillbaka till standardvärdet.
+- Modhjulet lägger till vibrato, pitchbend följer "Bend" i VOICE.
+- Mode: Poly (8 röster), Mono (triggar om varje ton), Legato (glider utan omtrigg – bäst för leads).
