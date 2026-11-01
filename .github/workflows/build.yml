@@ -113,6 +113,7 @@ jobs:
           mkdir -p "$P"
           cp -R "$A/VST3/Bakelit.vst3" "$A/AU/Bakelit.component" "$P/"
           cp packaging/mac/Installera.command packaging/mac/INSTALLERA.txt "$P/"
+          cp docs/Manual-sv.pdf docs/Manual-en.pdf "$P/"
           chmod +x "$P/Installera.command"
           ditto -c -k --sequesterRsrc --keepParent "$P" Bakelit-mac.zip
 
@@ -171,6 +172,7 @@ jobs:
           New-Item -ItemType Directory -Force -Path $P | Out-Null
           Copy-Item -Recurse "$A/VST3/Bakelit.vst3" "$P/"
           Copy-Item packaging/windows/INSTALLERA.txt, packaging/windows/Installera.bat "$P/"
+          Copy-Item docs/Manual-sv.pdf, docs/Manual-en.pdf "$P/"
           Compress-Archive -Path $P -DestinationPath Bakelit-windows.zip
 
       - name: Ladda upp

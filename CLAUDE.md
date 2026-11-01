@@ -55,6 +55,7 @@ Commits: författare `Hans Falk <hans.falk@gmail.com>`. Pusha direkt till main (
 | Egna förinställningar, sparat läge, värdinfo | `Source/PluginProcessor.*` |
 | GUI: rack-layout, skin, rubriker | `Source/PluginEditor.*`, `Source/UiCommon.h` |
 | Installation | `packaging/mac`, `packaging/windows` |
+| Manual sv/en | `docs/Manual-*.md` → `tools/make_manual.sh` → `docs/Manual-*.pdf` (följer med i release-zipparna). Uppdatera vid nya funktioner! |
 
 ## Status (2026-11-01, v1.8.0)
 Klart: motor, Fat-funktioner, sekvenser med MIDI-export/markörer, mörkt slitet skin (v1.7: kall nattsvart plåt, punktljus över allt, rost/ärg, korn, slitna stålrattar, präglad logga) med svenska texter,
@@ -70,5 +71,5 @@ Idé till senare: låta Polyrytm-spåren styra undertonernas delare (som origina
 2. Byggflödet för privat repo: Mac/Windows bara vid release (Linux-tester vid push) – gör INNAN repot blir privat.
 3. Signering: Apple Developer (notarisering) + Windows-kodsignering; riktiga installationsprogram (.pkg/.exe).
 4. JUCE-licens för sluten kod (kolla juce.com), varumärkessök Falk Instruments/Bakelit (TMview, klass 9), domän falkinstruments.com.
-5. Betatest, manual sv/en, ljuddemos, produktsida, butik via merchant of record (Paddle/Lemon Squeezy).
+5. Betatest, ljuddemos, produktsida, butik via merchant of record (Paddle/Lemon Squeezy).
 Rack Extension (Reason) avvaktas – stort jobb, kräver lokal testning hos Hans.
