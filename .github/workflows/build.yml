@@ -77,7 +77,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: build/_deps
-          key: juce-mac-${{ hashFiles('CMakeLists.txt') }}
+          key: juce-macos26-${{ hashFiles('CMakeLists.txt') }}   # byt nyckel när runner-avbilden byts (sökvägar till Xcode sparas i cachen)
 
       - name: "Bygg (universal: Apple Silicon + Intel)"
         run: |
