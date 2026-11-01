@@ -54,7 +54,7 @@ private:
     steso::ui::Section osc1 { "TONGENERATOR 1|Osc 1", steso::ui::colours::accent };
     steso::ui::Section osc2 { "TONGENERATOR 2|Osc 2", steso::ui::colours::accent };
     steso::ui::Section osc3 { "TONGENERATOR 3|Osc 3", steso::ui::colours::accent };
-    steso::ui::Section mixer { "BLANDARE|Mixer", steso::ui::colours::accent };
+    steso::ui::Section mixer { "NIVÅER|Mixer", steso::ui::colours::accent };
     steso::ui::Section filter { "FILTER", steso::ui::colours::accent2 };
     steso::ui::Section filterEnv { "FILTERKURVA|Filter env", steso::ui::colours::accent2 };
     steso::ui::Section ampEnv { "VOLYMKURVA|Amp env", steso::ui::colours::accent };
