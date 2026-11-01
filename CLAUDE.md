@@ -1,0 +1,68 @@
+# Bakelit (Falk Instruments) – arbetsanteckningar för Claude
+
+Polyfon analog-inspirerad synth som VST3 (Mac + Windows) och AU (Mac), byggd med JUCE 8.0.10.
+Produkt: **Bakelit**, varumärke: **Falk Instruments** (ägs av Hans enskilda firma ijoli, liksom synkaoss).
+Internt kodnamn **StesoLead** (repo, klassnamn, CMake-target) – syns aldrig för användaren.
+
+## Användaren
+Hans: tekniskt kunnig men inte utvecklare, svarar på svenska, vill ha korta skumbara svar (ADHD), komplett lösning direkt.
+Kör Reason på Mac. Kostnadsmedveten. Säg emot om något är en dålig idé.
+
+## Hårda regler
+1. **Ändra aldrig** `PLUGIN_MANUFACTURER_CODE Falk` / `PLUGIN_CODE Stsl` eller ValueTree-typen `"StesoLead"` i
+   `PluginProcessor.cpp` (apvts) – då hittar DAW:arna inte gamla projekt/sparat läge.
+2. **Ändra aldrig ett parameter-ID** i `Parameters.h`. Nya parametrar: standardvärde som stänger av funktionen så
+   att gamla projekt/presets låter som förut.
+3. Fabrikspresets läggs **alltid sist** (programnumren sparas i projekt). Listan i GUI:t grupperas per kategori ändå.
+4. Säg aldrig att något är klart förrän bygget + `StesoLeadTests` är grönt (lokalt) och CI (pluginval/auval) är grön.
+5. Av/på-parametrar: använd `AudioParameterChoice {"Off","On"}`, inte `AudioParameterBool` (pluginval state restoration fallerar).
+6. Synliga texter: **svenska med engelska inom parentes** (sektionsrubriker skrivs `"SVENSKA|English"`).
+   Rattnamn/val på engelska. Använd `juce::String::fromUTF8` för åäö. Inga andras varumärken i UI/presets
+   (Polivoks→Steppe, Juno→Chorus, ingen Moog).
+
+## Bygga och testa (molnmiljön)
+```bash
+# JUCE lokalt (snabbare än FetchContent):
+git clone --depth 1 --branch 8.0.10 https://github.com/juce-framework/JUCE.git /tmp/juce
+sudo apt-get install -y libasound2-dev libxrandr-dev libxinerama-dev libxcursor-dev libxext-dev libxcomposite-dev xvfb
+cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DJUCE_DIR=/tmp/juce
+cmake --build build
+cd /tmp/out && xvfb-run -a /home/user/StesoLead/build/StesoLeadTests_artefacts/Release/StesoLeadTests --wav-dir wav --screenshot shot.png
+```
+Testerna: alla presets (44.1/96 kHz: NaN, klipp, tystnad, hängande röster, CPU), röstlägen/pedal, spara/ladda läge
+(även pluginval-liknande slumpvärden), sekvenser (export = uppspelning, polymetri, arp, bypass), stresstest 40 rundor,
+egna förinställningar (inkl. gamla .stesolead), skärmdumpar kompakt + utfällt (`shot.png`, `shot-full.png`).
+Att köra nedladdade binärer (t.ex. pluginval) lokalt nekas – pluginval/auval körs i CI.
+
+## Release
+Push till main → `.github/workflows/build.yml` kör Linux (tester + pluginval), macOS (universal, ad hoc-signerat,
+pluginval + auval) och Windows (pluginval). Release: GitHub-verktyget `actions_run_trigger` → `run_workflow`,
+`build.yml`, ref `main`, inputs `{"release_tag": "vX.Y.Z"}`. Kolla sedan `get_release_by_tag` att
+`Bakelit-mac.zip` och `Bakelit-windows.zip` finns. Höj `project(... VERSION x.y.z)` i CMakeLists.txt.
+Commits: författare `Hans Falk <hans.falk@gmail.com>`. Pusha direkt till main (enmansprojekt).
+
+## Var saker finns
+| Del | Fil |
+|---|---|
+| Parametrar | `Source/Parameters.*` |
+| Fabrikspresets 1–35 | `Source/Presets.cpp` |
+| Presets 36–135 | `tools/gen_presets.py` → `Source/PresetBank.inc` (nivåer i `tools/levels.json`) |
+| Oscillator, envelope, Ladder-/Steppe-filter (`PolivoksFilter`), halvbandsdecimator | `Source/dsp/DspUtils.h` |
+| Röster (3 osc, unison, 2x oversampling, feedback, warmth), MIDI, LFO | `Source/dsp/SynthEngine.*` |
+| Chorus, delay, reverb | `Source/dsp/Effects.*` |
+| Stegsekvenserare/arp, MIDI-export | `Source/seq/Sequencer.*`, GUI `Source/SeqPanel.*` |
+| Egna förinställningar, sparat läge, värdinfo | `Source/PluginProcessor.*` |
+| GUI: rack-layout, skin, rubriker | `Source/PluginEditor.*`, `Source/UiCommon.h` |
+| Installation | `packaging/mac`, `packaging/windows` |
+
+## Status (2026-11-01, v1.6.0)
+Klart: motor, Fat-funktioner, sekvenser med MIDI-export/markörer, sovjetinspirerat skin med svenska texter,
+rack-layout med fällbar stegsekvenserare/klaviatur, 135 presets, egna förinställningar, namnbyte till Bakelit.
+
+**Kvar innan försäljning** (i ordning):
+1. Hans lyssnar och testar i Reason (ljud, presets, dra MIDI, fönsterstorlek vid utfällning) – inget är provlyssnat än.
+2. Byggflödet för privat repo: Mac/Windows bara vid release (Linux-tester vid push) – gör INNAN repot blir privat.
+3. Signering: Apple Developer (notarisering) + Windows-kodsignering; riktiga installationsprogram (.pkg/.exe).
+4. JUCE-licens för sluten kod (kolla juce.com), varumärkessök Falk Instruments/Bakelit (TMview, klass 9), domän falkinstruments.com.
+5. Betatest, manual sv/en, ljuddemos, produktsida, butik via merchant of record (Paddle/Lemon Squeezy).
+Rack Extension (Reason) avvaktas – stort jobb, kräver lokal testning hos Hans.
