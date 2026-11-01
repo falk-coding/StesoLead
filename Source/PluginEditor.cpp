@@ -95,7 +95,7 @@ void drawSectionFrame (juce::Graphics& g, juce::Rectangle<float> r, const juce::
         size -= 0.5f;
     const auto f1 = titleFont (size);
     g.setFont (f1);
-    g.setColour (colours::text.withAlpha (0.82f));
+    g.setColour (colours::text);
     g.drawText (cyr, header, juce::Justification::centredLeft);
     float x = header.getX() + juce::GlyphArrangement::getStringWidth (f1, cyr) + 8.0f;
 
@@ -566,7 +566,7 @@ Control::Control (juce::AudioProcessorValueTreeState& apvts, const juce::String&
     label.setText (text.toUpperCase(), juce::dontSendNotification);
     label.setJustificationType (juce::Justification::centred);
     label.setFont (panelFont (12.5f, false).withExtraKerningFactor (0.14f));
-    label.setColour (juce::Label::textColourId, colours::text.withAlpha (0.72f));
+    label.setColour (juce::Label::textColourId, colours::text.withAlpha (0.92f));
     label.setInterceptsMouseClicks (false, false);
     addAndMakeVisible (label);
 
@@ -629,12 +629,34 @@ void Section::add (juce::AudioProcessorValueTreeState& apvts, const juce::String
 void Section::paint (juce::Graphics& g)
 {
     drawSectionFrame (g, getLocalBounds().toFloat().reduced (3.0f), title, note);
+
+    // Grupp (undertonen): tunn ram runt rattarna och en liten rubrik i ramens överkant.
+    if (groupFirst >= 0 && groupFirst < (int) controls.size())
+    {
+        auto box = controls[(size_t) groupFirst]->getBounds().getUnion (controls.back()->getBounds()).toFloat()
+                       .expanded (2.0f, 0.0f).withTrimmedTop (-3.0f).withTrimmedBottom (-1.0f);
+        g.setColour (juce::Colours::black.withAlpha (0.28f));
+        g.fillRoundedRectangle (box, 3.0f);
+        g.setColour (colours::hairline.withAlpha (0.45f));
+        g.drawRoundedRectangle (box, 3.0f, 1.0f);
+
+        const auto f = panelFont (9.5f, false).withExtraKerningFactor (0.12f);
+        const float tw = juce::GlyphArrangement::getStringWidth (f, groupCaption) + 8.0f;
+        auto cap = juce::Rectangle<float> (box.getCentreX() - tw * 0.5f, box.getY() - 5.0f, tw, 10.0f);
+        g.setColour (colours::metal);
+        g.fillRect (cap);
+        g.setFont (f);
+        g.setColour (colours::text.withAlpha (0.9f));
+        g.drawText (groupCaption, cap, juce::Justification::centred);
+    }
 }
 
 void Section::resized()
 {
     auto r = getLocalBounds().reduced (8, 6);
     r.removeFromTop (22);
+    if (groupFirst >= 0)
+        r.removeFromTop (9);   // plats för gruppens rubrik under sektionsrubriken
     if (controls.empty())
         return;
 
@@ -658,24 +680,29 @@ StesoLeadEditor::StesoLeadEditor (StesoLeadProcessor& p)
     osc1.add (s, pid::osc1Wave, "Wave", true);
     osc1.add (s, pid::osc1Octave, "Octave");
     osc1.add (s, pid::osc1PW, "PW");
-    osc1.add (s, pid::osc1SubDiv, "Subh div");
+    osc1.add (s, pid::osc1SubDiv, "Sub 1 Div");
+    osc1.add (s, pid::mixSubh1, "Sub 1");
+    osc1.setGroup (3, juce::String::fromUTF8 ("UNDERTON 1 (SUB 1)"));
 
     osc2.add (s, pid::osc2Wave, "Wave", true);
     osc2.add (s, pid::osc2Semi, "Semi");
     osc2.add (s, pid::osc2Fine, "Fine");
     osc2.add (s, pid::osc2PW, "PW");
-    osc2.add (s, pid::osc2SubDiv, "Subh div");
+    osc2.add (s, pid::osc2SubDiv, "Sub 2 Div");
+    osc2.add (s, pid::mixSubh2, "Sub 2");
+    osc2.setGroup (4, juce::String::fromUTF8 ("UNDERTON 2 (SUB 2)"));
 
     osc3.add (s, pid::osc3Wave, "Wave", true);
     osc3.add (s, pid::osc3Semi, "Semi");
     osc3.add (s, pid::osc3Fine, "Fine");
+    osc3.add (s, pid::osc3SubDiv, "Sub 3 Div");
+    osc3.add (s, pid::mixSubh3, "Sub 3");
+    osc3.setGroup (3, juce::String::fromUTF8 ("UNDERTON 3 (SUB 3)"));
 
     mixer.add (s, pid::mixOsc1, "Osc 1");
     mixer.add (s, pid::mixOsc2, "Osc 2");
     mixer.add (s, pid::mixOsc3, "Osc 3");
-    mixer.add (s, pid::mixSub, "Sub");
-    mixer.add (s, pid::mixSubh1, "Subh 1");
-    mixer.add (s, pid::mixSubh2, "Subh 2");
+    mixer.add (s, pid::mixSub, "Sub Oct");
     mixer.add (s, pid::mixNoise, "Noise");
 
     filter.add (s, pid::filterType, "Type", true);
@@ -839,7 +866,9 @@ void StesoLeadEditor::paintOverChildren (juce::Graphics& g)
 
     // Smuts och korn över allt, sedan punktljuset – per rackenhet, så att varje enhet har sin ljuskägla.
     const int h = currentBaseHeight();
+    g.setOpacity (0.4f);
     g.drawImage (grimeOverlay, 0, 0, baseWidth, h, 0, 0, baseWidth, h);
+    g.setOpacity (1.0f);
 
     auto light = [&] (int y, int unitH, float strength)
     {
@@ -850,10 +879,11 @@ void StesoLeadEditor::paintOverChildren (juce::Graphics& g)
         drawSpotLight (g, area, { (float) baseWidth * 0.46f, (float) y + (float) unitH * 0.32f });
     };
     int y = 0;
-    light (y, synthH, 1.0f);
+    // Svagt över kontrollerna – mörkret ligger i bakgrunden (paint), så att allt går att läsa.
+    light (y, synthH, 0.1f);
     y += synthH;
-    if (showSeq)  { y += unitGap; light (y, seqH, 0.85f);  y += seqH; }
-    if (showKeys) { y += unitGap; light (y, keysH, 0.7f); }
+    if (showSeq)  { y += unitGap; light (y, seqH, 0.1f);  y += seqH; }
+    if (showKeys) { y += unitGap; light (y, keysH, 0.08f); }
 }
 
 void StesoLeadEditor::paint (juce::Graphics& g)
@@ -880,6 +910,22 @@ void StesoLeadEditor::paint (juce::Graphics& g)
     y += synthH;
     if (showSeq)  { y += unitGap; drawUnit (y, seqH);  y += seqH; }
     if (showKeys) { y += unitGap; drawUnit (y, keysH); y += keysH; }
+
+    // Punktljuset fullt på plåten (bakom kontrollerna): mörkt i kanterna utan att texten försvinner.
+    {
+        auto spot = [&] (int uy, int uh)
+        {
+            juce::Graphics::ScopedSaveState save (g);
+            const auto area = juce::Rectangle<float> (0.0f, (float) uy, (float) baseWidth, (float) uh);
+            g.reduceClipRegion (area.toNearestInt());
+            drawSpotLight (g, area, { (float) baseWidth * 0.46f, (float) uy + (float) uh * 0.32f });
+        };
+        int uy = 0;
+        spot (uy, synthH);
+        uy += synthH;
+        if (showSeq)  { uy += unitGap; spot (uy, seqH);  uy += seqH; }
+        if (showKeys) { uy += unitGap; spot (uy, keysH); }
+    }
 
     // Logga: präglad i plåten, nästan ton-i-ton (skugga uppåt-vänster, ljuskant nedåt-höger).
     auto header = juce::Rectangle<float> ((float) earW + 20.0f, 8.0f, 600.0f, 44.0f);
@@ -928,11 +974,11 @@ void StesoLeadEditor::resized()
 
     auto row1 = r.removeFromTop (rowH);
     {
-        // Bredd efter antal rattar: OSC 1 (4), OSC 2 (5), OSC 3 (3 + plats för rubriken), Nivåer (7).
+        // Bredd efter antal rattar: OSC 1 (5), OSC 2 (6), OSC 3 (5), Nivåer (5).
         const int w = row1.getWidth();
-        osc1.setBounds (row1.removeFromLeft (w * 4 / 20));
-        osc2.setBounds (row1.removeFromLeft (w * 5 / 20));
-        osc3.setBounds (row1.removeFromLeft (w * 4 / 20));
+        osc1.setBounds (row1.removeFromLeft (w * 5 / 21));
+        osc2.setBounds (row1.removeFromLeft (w * 6 / 21));
+        osc3.setBounds (row1.removeFromLeft (w * 5 / 21));
         mixer.setBounds (row1);
     }
 

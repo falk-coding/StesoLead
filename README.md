@@ -76,8 +76,9 @@ Ny release: **Actions → Build → Run workflow** med `release_tag` (t.ex. `v1.
 - Allt är automatiserbart och sparas i projekt/presets. 10 fabrikspresets i kategorin *Polyrhythm*.
 
 ## Undertoner / subharmoniska oscillatorer (v1.7)
-- **Subh div** på OSC 1 och OSC 2 (÷1–16): en undertone på oscillatorns frekvens delad med N, med samma vågform.
-  Följer tonhöjd, drift och glid exakt. Nivåerna **Subh 1** och **Subh 2** finns under Nivåer (Mixer), 0 = av.
+- Varje oscillator har sin egen undertone (v1.8: även OSC 3), inramad i oscillatorns sektion:
+  **Sub N Div** (÷1–16) och nivån **Sub N** (0 = av). Samma vågform som oscillatorn; följer tonhöjd, drift och glid exakt.
+- Mixerns gamla suboscillator (en oktav ner) heter nu **Sub Oct** för att inte förväxlas.
 - Kombinera med Polyrytm i Div-läge för rytmiska undertonsmönster. 4 fabrikspresets i kategorin *Subharmonic*.
 
 **Format:** VST3 (Mac + Windows) och AU (Mac). Fungerar i Reason, Ableton, Cubase, FL Studio, Bitwig,

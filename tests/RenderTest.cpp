@@ -659,8 +659,11 @@ void testSubharmonics()
         set (steso::pid::osc2Fine, 0.0f);
         set (steso::pid::drift, 0.0f);
         set (steso::pid::cutoff, 20000.0f);
-        set (osc == 1 ? steso::pid::mixSubh1 : steso::pid::mixSubh2, 1.0f);
-        set (osc == 1 ? steso::pid::osc1SubDiv : steso::pid::osc2SubDiv, (float) div);
+        set (steso::pid::osc3Wave, 3.0f);
+        set (steso::pid::osc3Semi, 0.0f);
+        set (steso::pid::osc3Fine, 0.0f);
+        set (osc == 1 ? steso::pid::mixSubh1 : osc == 2 ? steso::pid::mixSubh2 : steso::pid::mixSubh3, 1.0f);
+        set (osc == 1 ? steso::pid::osc1SubDiv : osc == 2 ? steso::pid::osc2SubDiv : steso::pid::osc3SubDiv, (float) div);
 
         const double sr = 48000.0;
         const int block = 480;
@@ -690,7 +693,9 @@ void testSubharmonics()
 
     const auto f1 = measure (4, 1);
     const auto f2 = measure (3, 2);
-    std::cout << "  A4 / 4 = " << f1 << " Hz, A4 / 3 = " << f2 << " Hz" << std::endl;
+    const auto f3 = measure (2, 3);
+    std::cout << "  A4 / 4 = " << f1 << " Hz, A4 / 3 = " << f2 << " Hz, A4 / 2 = " << f3 << " Hz" << std::endl;
+    check (std::abs (f3 - 220.0) <= 2.0, "undertonen på OSC 3 ÷2 ger " + juce::String (f3) + " Hz (väntat 220)");
     check (std::abs (f1 - 110.0) <= 2.0, "undertonen på OSC 1 ÷4 ger " + juce::String (f1) + " Hz (väntat 110)");
     check (std::abs (f2 - 146.67) <= 2.0, "undertonen på OSC 2 ÷3 ger " + juce::String (f2) + " Hz (väntat 147)");
 }

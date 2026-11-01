@@ -43,6 +43,7 @@ void Voice::start (int newNote, float newVelocity, float startPitch, bool retrig
         sub.phase = osc1[0].phase * 0.5f;
         subh1.phase = rng.unipolar();
         subh2.phase = rng.unipolar();
+        subh3.phase = rng.unipolar();
         ladder.reset();
         polivoks.reset();
         feedbackState = 0.0f;
@@ -140,7 +141,7 @@ void Voice::render (float* left2x, float* right2x, int numSamples, const BlockPa
 
         const float dt1 = std::min (midiToHz (n1) / fs2, 0.45f);
         const float dt2 = std::min (midiToHz (n2) / fs2, 0.45f);
-        const float dt3 = bp.mix3 > 0.0f ? std::min (midiToHz (n3) / fs2, 0.45f) : 0.0f;
+        const float dt3 = (bp.mix3 > 0.0f || bp.mixSubh3 > 0.0f) ? std::min (midiToHz (n3) / fs2, 0.45f) : 0.0f;
 
         const float pwMod = l * bp.lfoPW * 0.45f;
         const float pw1 = std::clamp (bp.osc1PW + pwMod, 0.05f, 0.95f);
@@ -169,7 +170,7 @@ void Voice::render (float* left2x, float* right2x, int numSamples, const BlockPa
                 s1 += osc1[(size_t) u].process (bp.osc1Wave, std::min (dt1 * r, 0.45f), pw1);
                 // Osc 2 får stackarna i omvänd ordning -> mindre fasning mellan oscillatorerna.
                 s2 += osc2[(size_t) u].process (bp.osc2Wave, std::min (dt2 * bp.uniRatios[(size_t) (stacks - 1 - u)], 0.45f), pw2);
-                if (dt3 > 0.0f)
+                if (bp.mix3 > 0.0f)
                     s3 += osc3[(size_t) u].process (bp.osc3Wave, std::min (dt3 * r, 0.45f), 0.5f);
             }
             s1 *= stackNorm;
@@ -185,6 +186,8 @@ void Voice::render (float* left2x, float* right2x, int numSamples, const BlockPa
                 subh += subh1.process (bp.osc1Wave, dt1 / (float) bp.subDiv1, 0.5f) * bp.mixSubh1;
             if (bp.mixSubh2 > 0.0f)
                 subh += subh2.process (bp.osc2Wave, dt2 / (float) bp.subDiv2, 0.5f) * bp.mixSubh2;
+            if (bp.mixSubh3 > 0.0f)
+                subh += subh3.process (bp.osc3Wave, dt3 / (float) bp.subDiv3, 0.5f) * bp.mixSubh3;
 
             const float mixed = (s1 * bp.mix1 + s2 * bp.mix2 + s3 * bp.mix3 + subOsc * bp.mixSub + subh
                                  + noise * bp.mixNoise * 0.7f) * 0.5f;
@@ -273,6 +276,8 @@ void SynthEngine::updateBlockParams (const ParamPointers& p)
     bp.subDiv2 = juce::jlimit (1, 16, (int) p.osc2SubDiv->load());
     bp.mixSubh1 = p.mixSubh1->load();
     bp.mixSubh2 = p.mixSubh2->load();
+    bp.subDiv3 = juce::jlimit (1, 16, (int) p.osc3SubDiv->load());
+    bp.mixSubh3 = p.mixSubh3->load();
 
     // Resonans 0..1 -> k 0..4.15 (självsvänger längst upp).
     bp.resonanceK = 4.15f * p.resonance->load();

@@ -14,8 +14,8 @@ namespace colours
     inline const juce::Colour metalDark    { 0xff0b0c0e };
     inline const juce::Colour engraveDark  { 0xff040506 };
     inline const juce::Colour engraveLight { 0xff33373b };
-    inline const juce::Colour text         { 0xffa9aeb0 };   // kall, blekt tryckfärg
-    inline const juce::Colour dimText      { 0xff5f656a };
+    inline const juce::Colour text         { 0xffc3c8ca };   // kall, blekt tryckfärg (läsbar även i skuggan)
+    inline const juce::Colour dimText      { 0xff838a90 };
     inline const juce::Colour bakelite     { 0xff08090a };
     inline const juce::Colour hairline     { 0xff8a9095 };   // tunna linjer mellan sektionerna
     inline const juce::Colour lampRed      { 0xffe2482c };
@@ -103,8 +103,12 @@ public:
     void paint (juce::Graphics&) override;
     void resized() override;
     void setHeaderNote (const juce::String& n) { if (n != note) { note = n; repaint(); } }
+    // Rattarna från och med index `first` ramas in som en grupp med en liten rubrik (t.ex. undertonen).
+    void setGroup (int first, const juce::String& caption) { groupFirst = first; groupCaption = caption; repaint(); }
 
 private:
+    int groupFirst = -1;
+    juce::String groupCaption;
     juce::String title, note;
     juce::Colour colour;
     std::vector<std::unique_ptr<Control>> controls;

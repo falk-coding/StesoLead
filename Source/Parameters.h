@@ -88,6 +88,8 @@ namespace pid
     inline constexpr const char* osc2SubDiv  = "osc2SubDiv";
     inline constexpr const char* mixSubh1    = "mixSubh1";
     inline constexpr const char* mixSubh2    = "mixSubh2";
+    inline constexpr const char* osc3SubDiv  = "osc3SubDiv";
+    inline constexpr const char* mixSubh3    = "mixSubh3";
 
     inline constexpr const char* polyOn      = "polyOn";
     inline constexpr const char* polyBars    = "polyBars";
@@ -141,6 +143,7 @@ struct ParamPointers
     std::atomic<float>* polyOn {}; std::atomic<float>* polyBars {};
     std::atomic<float>* osc1SubDiv {}; std::atomic<float>* osc2SubDiv {};
     std::atomic<float>* mixSubh1 {}; std::atomic<float>* mixSubh2 {};
+    std::atomic<float>* osc3SubDiv {}; std::atomic<float>* mixSubh3 {};
     struct PolyLane
     {
         std::atomic<float>* on {}; std::atomic<float>* type {}; std::atomic<float>* pulses {};

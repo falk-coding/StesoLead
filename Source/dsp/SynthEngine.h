@@ -31,6 +31,8 @@ struct BlockParams
     // v1.7 Undertoner: frekvens = oscillatorns / div, samma vågform som oscillatorn.
     int subDiv1 = 2, subDiv2 = 3;
     float mixSubh1 = 0, mixSubh2 = 0;
+    int subDiv3 = 2;
+    float mixSubh3 = 0;
 };
 
 class Voice
@@ -72,7 +74,7 @@ private:
     float lfoFade = 1.0f;
 
     std::array<Oscillator, 4> osc1, osc2, osc3;   // en per unison-stack
-    Oscillator sub, subh1, subh2;
+    Oscillator sub, subh1, subh2, subh3;
     LadderFilter ladder;
     PolivoksFilter polivoks;
     float feedbackState = 0.0f;
