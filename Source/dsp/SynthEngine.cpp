@@ -41,6 +41,8 @@ void Voice::start (int newNote, float newVelocity, float startPitch, bool retrig
             osc3[u].phase = rng.unipolar();
         }
         sub.phase = osc1[0].phase * 0.5f;
+        subh1.phase = rng.unipolar();
+        subh2.phase = rng.unipolar();
         ladder.reset();
         polivoks.reset();
         feedbackState = 0.0f;
@@ -177,7 +179,14 @@ void Voice::render (float* left2x, float* right2x, int numSamples, const BlockPa
             const float subOsc = sub.process (Oscillator::square, dt1 * 0.5f, 0.5f);
             const float noise = rng.bipolar();
 
-            const float mixed = (s1 * bp.mix1 + s2 * bp.mix2 + s3 * bp.mix3 + subOsc * bp.mixSub
+            // Undertoner: delad frekvens, följer oscillatorns tonhöjd, drift och glid exakt.
+            float subh = 0.0f;
+            if (bp.mixSubh1 > 0.0f)
+                subh += subh1.process (bp.osc1Wave, dt1 / (float) bp.subDiv1, 0.5f) * bp.mixSubh1;
+            if (bp.mixSubh2 > 0.0f)
+                subh += subh2.process (bp.osc2Wave, dt2 / (float) bp.subDiv2, 0.5f) * bp.mixSubh2;
+
+            const float mixed = (s1 * bp.mix1 + s2 * bp.mix2 + s3 * bp.mix3 + subOsc * bp.mixSub + subh
                                  + noise * bp.mixNoise * 0.7f) * 0.5f;
 
             // Moog-loopen: filterutgången tillbaka in i filtret.
@@ -260,6 +269,10 @@ void SynthEngine::updateBlockParams (const ParamPointers& p)
     bp.mix2 = p.mixOsc2->load();
     bp.mixSub = p.mixSub->load();
     bp.mixNoise = p.mixNoise->load();
+    bp.subDiv1 = juce::jlimit (1, 16, (int) p.osc1SubDiv->load());
+    bp.subDiv2 = juce::jlimit (1, 16, (int) p.osc2SubDiv->load());
+    bp.mixSubh1 = p.mixSubh1->load();
+    bp.mixSubh2 = p.mixSubh2->load();
 
     // Resonans 0..1 -> k 0..4.15 (självsvänger längst upp).
     bp.resonanceK = 4.15f * p.resonance->load();

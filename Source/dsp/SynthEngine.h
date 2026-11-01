@@ -27,6 +27,10 @@ struct BlockParams
     float feedback = 0, warmth = 0;
     int unison = 1;
     std::array<float, 4> uniRatios { 1, 1, 1, 1 };
+
+    // v1.7 Undertoner: frekvens = oscillatorns / div, samma vågform som oscillatorn.
+    int subDiv1 = 2, subDiv2 = 3;
+    float mixSubh1 = 0, mixSubh2 = 0;
 };
 
 class Voice
@@ -68,7 +72,7 @@ private:
     float lfoFade = 1.0f;
 
     std::array<Oscillator, 4> osc1, osc2, osc3;   // en per unison-stack
-    Oscillator sub;
+    Oscillator sub, subh1, subh2;
     LadderFilter ladder;
     PolivoksFilter polivoks;
     float feedbackState = 0.0f;

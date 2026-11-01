@@ -471,11 +471,13 @@ StesoLeadEditor::StesoLeadEditor (StesoLeadProcessor& p)
     osc1.add (s, pid::osc1Wave, "Wave", true);
     osc1.add (s, pid::osc1Octave, "Octave");
     osc1.add (s, pid::osc1PW, "PW");
+    osc1.add (s, pid::osc1SubDiv, "Subh div");
 
     osc2.add (s, pid::osc2Wave, "Wave", true);
     osc2.add (s, pid::osc2Semi, "Semi");
     osc2.add (s, pid::osc2Fine, "Fine");
     osc2.add (s, pid::osc2PW, "PW");
+    osc2.add (s, pid::osc2SubDiv, "Subh div");
 
     osc3.add (s, pid::osc3Wave, "Wave", true);
     osc3.add (s, pid::osc3Semi, "Semi");
@@ -485,6 +487,8 @@ StesoLeadEditor::StesoLeadEditor (StesoLeadProcessor& p)
     mixer.add (s, pid::mixOsc2, "Osc 2");
     mixer.add (s, pid::mixOsc3, "Osc 3");
     mixer.add (s, pid::mixSub, "Sub");
+    mixer.add (s, pid::mixSubh1, "Subh 1");
+    mixer.add (s, pid::mixSubh2, "Subh 2");
     mixer.add (s, pid::mixNoise, "Noise");
 
     filter.add (s, pid::filterType, "Type", true);
@@ -703,10 +707,14 @@ void StesoLeadEditor::resized()
     const int unit = r.getWidth() / 16;   // 16 kolumner totalt per rad
 
     auto row1 = r.removeFromTop (rowH);
-    osc1.setBounds (row1.removeFromLeft (unit * 4));
-    osc2.setBounds (row1.removeFromLeft (unit * 4));
-    osc3.setBounds (row1.removeFromLeft (unit * 4));
-    mixer.setBounds (row1);
+    {
+        // Bredd efter antal rattar: OSC 1 (4), OSC 2 (5), OSC 3 (3 + plats för rubriken), Nivåer (7).
+        const int w = row1.getWidth();
+        osc1.setBounds (row1.removeFromLeft (w * 4 / 20));
+        osc2.setBounds (row1.removeFromLeft (w * 5 / 20));
+        osc3.setBounds (row1.removeFromLeft (w * 4 / 20));
+        mixer.setBounds (row1);
+    }
 
     auto row2 = r.removeFromTop (rowH);
     filter.setBounds (row2.removeFromLeft (unit * 11));

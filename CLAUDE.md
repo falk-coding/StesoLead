@@ -31,7 +31,7 @@ cd /tmp/out && xvfb-run -a /home/user/StesoLead/build/StesoLeadTests_artefacts/R
 ```
 `BAKELIT_QUICK=1` hoppar över preset-renderingen (snabb körning). Testerna: alla presets (44.1/96 kHz: NaN, klipp, tystnad, hängande röster, CPU), röstlägen/pedal, spara/ladda läge
 (även pluginval-liknande slumpvärden), sekvenser (export = uppspelning, polymetri, arp, bypass), stresstest 40 rundor,
-egna förinställningar (inkl. gamla .stesolead), Polyrytm (motor, export = uppspelning, sparat läge, bypass),
+egna förinställningar (inkl. gamla .stesolead), Polyrytm (motor, export = uppspelning, sparat läge, bypass), undertonernas frekvens,
 skärmdumpar kompakt + utfällt + Polyrytm (`shot.png`, `shot-full.png`, `shot-poly.png`).
 Att köra nedladdade binärer (t.ex. pluginval) lokalt nekas – pluginval/auval körs i CI.
 
@@ -46,7 +46,7 @@ Commits: författare `Hans Falk <hans.falk@gmail.com>`. Pusha direkt till main (
 | Del | Fil |
 |---|---|
 | Parametrar | `Source/Parameters.*` |
-| Fabrikspresets 1–35, Polyrytm 136–145 | `Source/Presets.cpp` |
+| Fabrikspresets 1–35, Polyrytm 136–145, Subharmonic 146–149 | `Source/Presets.cpp` |
 | Presets 36–135 | `tools/gen_presets.py` → `Source/PresetBank.inc` (nivåer i `tools/levels.json`) |
 | Oscillator, envelope, Ladder-/Steppe-filter (`PolivoksFilter`), halvbandsdecimator | `Source/dsp/DspUtils.h` |
 | Röster (3 osc, unison, 2x oversampling, feedback, warmth), MIDI, LFO | `Source/dsp/SynthEngine.*` |
@@ -58,9 +58,10 @@ Commits: författare `Hans Falk <hans.falk@gmail.com>`. Pusha direkt till main (
 
 ## Status (2026-11-01, v1.7.0)
 Klart: motor, Fat-funktioner, sekvenser med MIDI-export/markörer, sovjetinspirerat skin med svenska texter,
-rack-layout med fällbar stegsekvenserare/klaviatur, 145 presets, egna förinställningar, namnbyte till Bakelit,
+rack-layout med fällbar stegsekvenserare/klaviatur, 149 presets, egna förinställningar, namnbyte till Bakelit,
 Polyrytm-läge (v1.7: 4 spår Bar/Div, euklid, tonhöjdssteg, ringvisning; parametern `polyOn` går före `seqMode`).
-Hans har provlyssnat några presets – "låter VÄLDIGT bra". Idé till senare: subharmoniska oscillatorer (Sub ÷1–16 per osc).
+Hans har provlyssnat några presets – "låter VÄLDIGT bra". Undertoner (v1.7): `osc1SubDiv`/`osc2SubDiv` ÷1–16 + nivåer `mixSubh1`/`mixSubh2` (0 = av), samma vågform som oscillatorn.
+Idé till senare: låta Polyrytm-spåren styra undertonernas delare (som originalets sekvenser gör).
 
 **Kvar innan försäljning** (i ordning):
 1. Hans lyssnar och testar i Reason (ljud, presets, dra MIDI, fönsterstorlek vid utfällning) – inget är provlyssnat än.

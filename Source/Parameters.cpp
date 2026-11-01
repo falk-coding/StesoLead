@@ -199,9 +199,16 @@ juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout()
         }
     }
 
+    // v1.7 Undertoner: nivåerna är 0 som standard -> äldre projekt/presets låter som förut.
+    auto subh = std::make_unique<juce::AudioProcessorParameterGroup> ("subh", "Subharmonics", "|");
+    subh->addChild (std::make_unique<API> (id2 (pid::osc1SubDiv), "Osc1 Subharmonic Div", 1, 16, 2));
+    subh->addChild (std::make_unique<API> (id2 (pid::osc2SubDiv), "Osc2 Subharmonic Div", 1, 16, 3));
+    subh->addChild (std::make_unique<APF> (id2 (pid::mixSubh1), "Mix Subharmonic 1", Range (0.0f, 1.0f), 0.0f, percentAttr()));
+    subh->addChild (std::make_unique<APF> (id2 (pid::mixSubh2), "Mix Subharmonic 2", Range (0.0f, 1.0f), 0.0f, percentAttr()));
+
     layout.add (std::move (osc1), std::move (osc2), std::move (mix), std::move (filter), std::move (fenv),
                 std::move (aenv), std::move (lfo), std::move (voice), std::move (fx), std::move (seqGroup), std::move (fat),
-                std::move (poly));
+                std::move (poly), std::move (subh));
     return layout;
 }
 
@@ -236,6 +243,8 @@ void ParamPointers::bind (juce::AudioProcessorValueTreeState& s)
     mixOsc3 = p (pid::mixOsc3); filterType = p (pid::filterType); feedback = p (pid::feedback);
     warmth = p (pid::warmth); unison = p (pid::unison); uniDetune = p (pid::uniDetune);
     polyOn = p (pid::polyOn); polyBars = p (pid::polyBars);
+    osc1SubDiv = p (pid::osc1SubDiv); osc2SubDiv = p (pid::osc2SubDiv);
+    mixSubh1 = p (pid::mixSubh1); mixSubh2 = p (pid::mixSubh2);
     for (int l = 0; l < 4; ++l)
     {
         auto& L = polyLane[(size_t) l];

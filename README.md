@@ -24,7 +24,7 @@ Ny release: **Actions → Build → Run workflow** med `release_tag` (t.ex. `v1.
 - LFO (sine, triangle, saw, square, S&H) med fade in → pitch, filter, PWM
 - Analog drift per röst, stereospridning
 - Chorus (Juno-stil I/II), stereodelay med lågpass i återkopplingen, reverb
-- 145 fabrikspresets i kategorierna Bass, Lead, Keys, Pad, Brass, Pluck, FX, Sequence och Polyrhythm (nivåkalibrerade), skalbart GUI, inbyggd klaviatur
+- 149 fabrikspresets i kategorierna Bass, Lead, Keys, Pad, Brass, Pluck, FX, Sequence, Polyrhythm och Subharmonic (nivåkalibrerade), skalbart GUI, inbyggd klaviatur
 
 ## Fat-motorn (v1.2)
 - **Tre oscillatorer** (som på Minimoog) + sub-oktav + brus. Osc 3 står på -12 halvtoner som standard.
@@ -75,6 +75,11 @@ Ny release: **Actions → Build → Run workflow** med `release_tag` (t.ex. `v1.
 - Snabbval: **4:3, 3:2, 5:4, 7:4, Div, Init**. Dra MIDI till DAW och MIDI out fungerar som vanligt.
 - Allt är automatiserbart och sparas i projekt/presets. 10 fabrikspresets i kategorin *Polyrhythm*.
 
+## Undertoner / subharmoniska oscillatorer (v1.7)
+- **Subh div** på OSC 1 och OSC 2 (÷1–16): en undertone på oscillatorns frekvens delad med N, med samma vågform.
+  Följer tonhöjd, drift och glid exakt. Nivåerna **Subh 1** och **Subh 2** finns under Nivåer (Mixer), 0 = av.
+- Kombinera med Polyrytm i Div-läge för rytmiska undertonsmönster. 4 fabrikspresets i kategorin *Subharmonic*.
+
 **Format:** VST3 (Mac + Windows) och AU (Mac). Fungerar i Reason, Ableton, Cubase, FL Studio, Bitwig,
 Studio One, Reaper, Logic och GarageBand. Pro Tools (AAX) stöds inte – kräver avtal och betald signering hos Avid.
 
@@ -90,7 +95,7 @@ CPU, röstlägen, sustainpedal och att sparat läge laddas exakt. CI kör dessut
 | Fil | Innehåll |
 |---|---|
 | `Source/Parameters.*` | Alla parametrar (ändra aldrig ett ID – sparade projekt tappar värdet) |
-| `Source/Presets.cpp` | Fabrikspresets 1–35 och Polyrytm 136–145 |
+| `Source/Presets.cpp` | Fabrikspresets 1–35, Polyrytm 136–145, Subharmonic 146–149 |
 | `tools/gen_presets.py` | Genererar `Source/PresetBank.inc` (100 presets). Nivåer i `tools/levels.json` |
 | `Source/dsp/DspUtils.h` | Oscillator, envelope, ladderfilter |
 | `Source/dsp/SynthEngine.*` | Röster, röststöld, MIDI, LFO |

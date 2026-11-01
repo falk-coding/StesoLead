@@ -328,6 +328,37 @@ const std::vector<Preset>& getFactoryPresets()
             { master, -9.2f } },
             { { ON, 0, 1, 16, -12, 1 }, { ON, 0, 3, 16, 0, 3 }, { ON, 0, 5, 16, 7, 1 }, { ON, 0, 2, 16, 12, 2 } }, 4),
           {}, "| 0 3 5 | | 0 -2" },
+
+        // v1.7: Undertoner (subharmoniska oscillatorer). Läggs sist.
+        { "Undertone Bass", "Subharmonic", {
+            { voiceMode, MONO }, { osc2Wave, SQUARE }, { osc2Fine, 6 }, { mixOsc2, 0.4f },
+            { mixSubh1, 0.7f }, { osc1SubDiv, 2 }, { mixSubh2, 0.35f }, { osc2SubDiv, 3 },
+            { cutoff, 420 }, { resonance, 0.3f }, { filterEnv, 0.5f }, { fDecay, 0.25f }, { fSustain, 0.15f },
+            { drive, 0.5f }, { warmth, 0.35f }, { aSustain, 0.85f }, { aRelease, 0.12f }, { glide, 0.03f },
+            { spread, 0.0f }, { master, -0.6f } } },
+
+        { "Divided Fifths Drone", "Subharmonic", withPoly ({
+            { seqRate, R_16 }, { osc2Semi, 7 }, { osc2Fine, 0 }, { mixOsc2, 0.5f },
+            { mixSubh1, 0.6f }, { osc1SubDiv, 3 }, { mixSubh2, 0.5f }, { osc2SubDiv, 4 },
+            { cutoff, 520 }, { resonance, 0.55f }, { filterEnv, 0.5f }, { fDecay, 0.35f }, { fSustain, 0.1f },
+            { aDecay, 0.7f }, { aSustain, 0.25f }, { aRelease, 0.5f }, { feedback, 0.25f }, { warmth, 0.4f },
+            { delayMix, 0.2f }, { reverbMix, 0.2f }, { spread, 0.5f }, { master, -7.7f } },
+            { { ON, DIV, 4, 16, 0, 4 }, { ON, DIV, 3, 16, 0, 3 } }), {}, "0 -2 3 0 | 0 5 -5" },
+
+        { "Subharmonic Choir", "Subharmonic", {
+            { osc1Wave, SAW }, { osc2Wave, SAW }, { osc2Semi, 0 }, { osc2Fine, -8 },
+            { mixSubh1, 0.5f }, { osc1SubDiv, 5 }, { mixSubh2, 0.45f }, { osc2SubDiv, 6 },
+            { aAttack, 0.6f }, { aSustain, 0.9f }, { aRelease, 1.4f }, { fAttack, 0.6f }, { fDecay, 1.5f },
+            { fSustain, 0.5f }, { filterEnv, 0.25f }, { cutoff, 900 }, { resonance, 0.2f },
+            { chorus, CH_I }, { reverbMix, 0.4f }, { spread, 0.7f }, { master, -11.8f } } },
+
+        { "Gearbox Sequence", "Subharmonic", withPoly ({
+            { voiceMode, LEGATO }, { seqRate, R_16 }, { osc1Wave, SQUARE }, { osc2Wave, SAW }, { osc2Fine, 7 },
+            { mixSubh1, 0.55f }, { osc1SubDiv, 2 }, { mixSubh2, 0.45f }, { osc2SubDiv, 5 },
+            { cutoff, 350 }, { resonance, 0.7f }, { filterEnv, 0.65f }, { fDecay, 0.18f }, { fSustain, 0.0f },
+            { drive, 0.55f }, { feedback, 0.3f }, { glide, 0.04f }, { delayMix, 0.2f }, { spread, 0.0f },
+            { master, -4.6f } },
+            { { ON, DIV, 2, 16, 0, 5 }, { ON, DIV, 3, 16, 12, 2 } }), {}, "0 3 7 -2 5 | 0 -5" },
     };
 
     return presets;

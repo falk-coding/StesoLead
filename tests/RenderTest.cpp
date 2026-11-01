@@ -579,12 +579,12 @@ void testPolyrhythm()
     int polyPresets = 0;
     for (int i = 0; i < proc->getNumPrograms(); ++i)
     {
-        if (steso::getFactoryPresets()[(size_t) i].category != "Polyrhythm")
+        // Alla presets som använder Polyrytm (kategorierna Polyrhythm och Subharmonic).
+        proc->setCurrentProgram (i);
+        if (getParam (steso::pid::polyOn) < 0.5f)
             continue;
         ++polyPresets;
-        proc->setCurrentProgram (i);
         const auto name = proc->getProgramName (i);
-        check (getParam (steso::pid::polyOn) > 0.5f, name + ": Polyrytm är inte på");
         setParam (steso::pid::seqMidiOut, 1.0f);
 
         int ons = 0, offs = 0;
@@ -598,7 +598,7 @@ void testPolyrhythm()
         const bool same = sameNotes (live, readMidiFile (file, 0.0), why);
         check (same, name + ": export skiljer sig från uppspelningen: " + why);
     }
-    check (polyPresets == 10, "väntade 10 Polyrytm-presets, hittade " + juce::String (polyPresets));
+    check (polyPresets == 12, "väntade 12 presets med Polyrytm, hittade " + juce::String (polyPresets));
 
     // 3. Gamla presets har Polyrytm av.
     proc->setCurrentProgram (findPreset (*proc, "Odd Seven Acid"));
@@ -637,6 +637,62 @@ void testPolyrhythm()
     check (getParam (steso::pid::polyOn) > 0.5f, "Slå på igen återställer inte Polyrytm");
 
     std::cout << "  " << polyPresets << " presets, export = uppspelning, sparat läge ok" << std::endl;
+}
+
+void testSubharmonics()
+{
+    std::cout << "Undertoner:" << std::endl;
+    auto measure = [] (int div, int osc) -> double
+    {
+        std::unique_ptr<StesoLeadProcessor> proc (dynamic_cast<StesoLeadProcessor*> (createPluginFilter()));
+        auto set = [&] (const char* id, float v)
+        {
+            auto* p = proc->apvts.getParameter (id);
+            p->setValueNotifyingHost (p->convertTo0to1 (v));
+        };
+        proc->setCurrentProgram (findPreset (*proc, "Init Poly"));
+        set (steso::pid::mixOsc1, 0.0f);
+        set (steso::pid::mixOsc2, 0.0f);
+        set (steso::pid::osc1Wave, 3.0f);   // sinus -> ren ton att räkna nollgenomgångar på
+        set (steso::pid::osc2Wave, 3.0f);
+        set (steso::pid::osc2Semi, 0.0f);
+        set (steso::pid::osc2Fine, 0.0f);
+        set (steso::pid::drift, 0.0f);
+        set (steso::pid::cutoff, 20000.0f);
+        set (osc == 1 ? steso::pid::mixSubh1 : steso::pid::mixSubh2, 1.0f);
+        set (osc == 1 ? steso::pid::osc1SubDiv : steso::pid::osc2SubDiv, (float) div);
+
+        const double sr = 48000.0;
+        const int block = 480;
+        proc->setRateAndBufferSizeDetails (sr, block);
+        proc->prepareToPlay (sr, block);
+        juce::AudioBuffer<float> buffer (2, block);
+        juce::MidiBuffer midi;
+        int crossings = 0;
+        float prev = 0.0f;
+        for (int b = 0; b < 150; ++b)   // 1.5 s, räkna den sista sekunden
+        {
+            buffer.clear();
+            midi.clear();
+            if (b == 0)
+                midi.addEvent (juce::MidiMessage::noteOn (1, 69, 0.9f), 0);
+            proc->processBlock (buffer, midi);
+            const float* d = buffer.getReadPointer (0);
+            for (int i = 0; i < block; ++i)
+            {
+                if (b >= 50 && prev <= 0.0f && d[i] > 0.0f)
+                    ++crossings;
+                prev = d[i];
+            }
+        }
+        return crossings;
+    };
+
+    const auto f1 = measure (4, 1);
+    const auto f2 = measure (3, 2);
+    std::cout << "  A4 / 4 = " << f1 << " Hz, A4 / 3 = " << f2 << " Hz" << std::endl;
+    check (std::abs (f1 - 110.0) <= 2.0, "undertonen på OSC 1 ÷4 ger " + juce::String (f1) + " Hz (väntat 110)");
+    check (std::abs (f2 - 146.67) <= 2.0, "undertonen på OSC 2 ÷3 ger " + juce::String (f2) + " Hz (väntat 147)");
 }
 
 void testStress()
@@ -796,6 +852,7 @@ int main (int argc, char** argv)
     testState();
     testSequencer();
     testPolyrhythm();
+    testSubharmonics();
     testStress();
     testUserPresets();
     if (shot != juce::File())

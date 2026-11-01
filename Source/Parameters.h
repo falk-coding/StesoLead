@@ -83,6 +83,12 @@ namespace pid
     inline constexpr const char* seqMidiOut  = "seqMidiOut";
 
     // v1.7 Polyrytm. polyOn = Off som standard -> äldre projekt/presets påverkas inte.
+    // v1.7 Undertoner (subharmoniska oscillatorer): nivå 0 som standard -> av.
+    inline constexpr const char* osc1SubDiv  = "osc1SubDiv";
+    inline constexpr const char* osc2SubDiv  = "osc2SubDiv";
+    inline constexpr const char* mixSubh1    = "mixSubh1";
+    inline constexpr const char* mixSubh2    = "mixSubh2";
+
     inline constexpr const char* polyOn      = "polyOn";
     inline constexpr const char* polyBars    = "polyBars";
     // Per spår 1..4 (t.ex. "polyPulses1").
@@ -133,6 +139,8 @@ struct ParamPointers
     std::atomic<float>* mixOsc3 {}; std::atomic<float>* filterType {}; std::atomic<float>* feedback {};
     std::atomic<float>* warmth {}; std::atomic<float>* unison {}; std::atomic<float>* uniDetune {};
     std::atomic<float>* polyOn {}; std::atomic<float>* polyBars {};
+    std::atomic<float>* osc1SubDiv {}; std::atomic<float>* osc2SubDiv {};
+    std::atomic<float>* mixSubh1 {}; std::atomic<float>* mixSubh2 {};
     struct PolyLane
     {
         std::atomic<float>* on {}; std::atomic<float>* type {}; std::atomic<float>* pulses {};
