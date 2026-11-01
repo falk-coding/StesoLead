@@ -65,10 +65,13 @@ void drawLamp (juce::Graphics& g, juce::Rectangle<float> r, juce::Colour lit, ju
 
 void drawSectionFrame (juce::Graphics& g, juce::Rectangle<float> r, const juce::String& title, const juce::String& note)
 {
-    // Lätt nedsänkt fält i plåten.
-    g.setColour (juce::Colours::black.withAlpha (0.16f));
-    g.fillRect (r);
-    drawEngravedBox (g, r);
+    // Inga boxar: bara en tunn tryckt linje till höger och under sektionen (som på en gammal frontpanel).
+    {
+        const auto outer = r.expanded (3.0f);
+        g.setColour (colours::hairline.withAlpha (0.22f));
+        g.drawLine (outer.getRight() - 0.5f, outer.getY() + 6.0f, outer.getRight() - 0.5f, outer.getBottom() - 6.0f, 1.0f);
+        g.drawLine (outer.getX() + 6.0f, outer.getBottom() - 0.5f, outer.getRight() - 6.0f, outer.getBottom() - 0.5f, 1.0f);
+    }
 
     const auto cyr = title.upToFirstOccurrenceOf ("|", false, false);
     const auto lat = title.fromFirstOccurrenceOf ("|", false, false);
@@ -77,54 +80,43 @@ void drawSectionFrame (juce::Graphics& g, juce::Rectangle<float> r, const juce::
 
     // Krymp rubriken tills svenska + (engelska) får plats i smala sektioner.
     const auto latUpper = lat.isNotEmpty() ? "(" + lat.toUpperCase() + ")" : juce::String();
-    float size = 15.0f;
+    const auto noteFont = panelFont (12.0f, false).withExtraKerningFactor (0.1f);
+    const float noteW = note.isNotEmpty() ? juce::GlyphArrangement::getStringWidth (noteFont, note) + 10.0f : 0.0f;
+    float size = 14.0f;
+    auto titleFont = [] (float sz) { return panelFont (sz, false).withExtraKerningFactor (0.16f); };
+    auto subFont = [] (float sz) { return panelFont (sz * 0.72f, false).withExtraKerningFactor (0.14f); };
     auto fits = [&] (float sz)
     {
-        const float w1 = juce::GlyphArrangement::getStringWidth (panelFont (sz).withExtraKerningFactor (0.08f), cyr);
-        const float w2 = latUpper.isEmpty() ? 0.0f
-                       : juce::GlyphArrangement::getStringWidth (panelFont (sz * 0.73f, false).withExtraKerningFactor (0.1f), latUpper) + 8.0f;
-        return w1 + w2 + 12.0f <= header.getWidth();
+        const float w1 = juce::GlyphArrangement::getStringWidth (titleFont (sz), cyr);
+        const float w2 = latUpper.isEmpty() ? 0.0f : juce::GlyphArrangement::getStringWidth (subFont (sz), latUpper) + 8.0f;
+        return w1 + w2 + 12.0f + noteW <= header.getWidth();
     };
-    while (size > 11.0f && ! fits (size))
+    while (size > 9.5f && ! fits (size))
         size -= 0.5f;
-    const auto f1 = panelFont (size).withExtraKerningFactor (0.08f);
+    const auto f1 = titleFont (size);
     g.setFont (f1);
-    g.setColour (colours::text);
+    g.setColour (colours::text.withAlpha (0.82f));
     g.drawText (cyr, header, juce::Justification::centredLeft);
     float x = header.getX() + juce::GlyphArrangement::getStringWidth (f1, cyr) + 8.0f;
 
-    if (lat.isNotEmpty())
+    if (lat.isNotEmpty() && fits (size))
     {
-        const auto f2 = panelFont (size * 0.73f, false).withExtraKerningFactor (0.1f);
+        const auto f2 = subFont (size);
         g.setFont (f2);
         g.setColour (colours::dimText);
-        const auto en = latUpper;
-        g.drawText (en, juce::Rectangle<float> (x, header.getY() + 1.0f, 220.0f, header.getHeight()),
+        g.drawText (latUpper, juce::Rectangle<float> (x, header.getY() + 1.0f, 220.0f, header.getHeight()),
                     juce::Justification::centredLeft);
-        x += juce::GlyphArrangement::getStringWidth (f2, en) + 8.0f;
     }
 
     // Notering längst till höger (t.ex. röster).
-    float right = header.getRight();
     if (note.isNotEmpty())
     {
-        const auto f3 = panelFont (12.0f).withExtraKerningFactor (0.08f);
+        const auto f3 = noteFont;
         const float nw = juce::GlyphArrangement::getStringWidth (f3, note) + 2.0f;
         g.setFont (f3);
-        g.setColour (colours::lampAmber.withAlpha (0.9f));
-        g.drawText (note, juce::Rectangle<float> (right - nw, header.getY() + 1.0f, nw, header.getHeight()),
+        g.setColour (colours::lampAmber.withAlpha (0.85f));
+        g.drawText (note, juce::Rectangle<float> (header.getRight() - nw, header.getY() + 1.0f, nw, header.getHeight()),
                     juce::Justification::centredRight);
-        right -= nw + 8.0f;
-    }
-
-    // Graverad linje ut till högerkanten.
-    const float ly = header.getCentreY() + 1.0f;
-    if (x < right - 4.0f)
-    {
-        g.setColour (colours::engraveDark.withAlpha (0.7f));
-        g.drawLine (x, ly, right, ly, 1.0f);
-        g.setColour (colours::engraveLight.withAlpha (0.35f));
-        g.drawLine (x, ly + 1.0f, right, ly + 1.0f, 1.0f);
     }
 }
 
@@ -165,12 +157,12 @@ juce::Image makePanelTexture (int w, int h)
         const auto base = colours::metal;
         for (int y = 0; y < h; ++y)
         {
-            // Svaga horisontella slipspår + korn.
-            const float streak = (float) (rnd.nextInt (9) - 4) * 0.6f;
+            const float streak = (float) (rnd.nextInt (5) - 2) * 0.4f;
             for (int x = 0; x < w; ++x)
             {
-                const float n = (rnd.nextFloat() - 0.5f) * 14.0f + streak;
-                const auto px = juce::Colour::fromRGB ((juce::uint8) juce::jlimit (0, 255, (int) (base.getRed() + n)),
+                // Fint korn, lite varmare i rött (bränd lack).
+                const float n = (rnd.nextFloat() - 0.5f) * 7.0f + streak;
+                const auto px = juce::Colour::fromRGB ((juce::uint8) juce::jlimit (0, 255, (int) (base.getRed() + n * 1.05f)),
                                                        (juce::uint8) juce::jlimit (0, 255, (int) (base.getGreen() + n)),
                                                        (juce::uint8) juce::jlimit (0, 255, (int) (base.getBlue() + n * 0.9f)));
                 data.setPixelColour (x, y, px);
@@ -180,33 +172,68 @@ juce::Image makePanelTexture (int w, int h)
 
     juce::Graphics g (img);
 
-    // Fläckar och smuts.
-    for (int i = 0; i < 120; ++i)
+    // Fläckar: mörka sotfläckar och några ljusare nötta partier.
+    for (int i = 0; i < 90; ++i)
     {
         const float cx = rnd.nextFloat() * (float) w, cy = rnd.nextFloat() * (float) h;
-        const float rad = 20.0f + rnd.nextFloat() * 140.0f;
-        const bool dark = rnd.nextFloat() < 0.7f;
-        const auto col = dark ? juce::Colour (0xff17140f) : juce::Colour (0xff6d6a5e);
-        g.setGradientFill (juce::ColourGradient (col.withAlpha (0.07f + rnd.nextFloat() * 0.12f), cx, cy,
+        const float rad = 30.0f + rnd.nextFloat() * 180.0f;
+        const bool dark = rnd.nextFloat() < 0.75f;
+        const auto col = dark ? juce::Colour (0xff050504) : juce::Colour (0xff3a3630);
+        g.setGradientFill (juce::ColourGradient (col.withAlpha (0.06f + rnd.nextFloat() * 0.12f), cx, cy,
                                                  col.withAlpha (0.0f), cx + rad, cy, true));
         g.fillEllipse (cx - rad, cy - rad * 0.7f, rad * 2.0f, rad * 1.4f);
     }
 
-    // Repor.
-    for (int i = 0; i < 450; ++i)
+    // Sprickor i lacken: förgrenade, tunna, mörka med en svag ljus kant.
+    for (int i = 0; i < 18; ++i)
     {
-        const float x1 = rnd.nextFloat() * (float) w, y1 = rnd.nextFloat() * (float) h;
-        const float len = 4.0f + std::pow (rnd.nextFloat(), 2.0f) * 90.0f;
-        const float ang = rnd.nextFloat() * juce::MathConstants<float>::twoPi;
-        const bool light = rnd.nextFloat() < 0.75f;
-        g.setColour ((light ? juce::Colour (0xffb9b6a8) : juce::Colour (0xff0f0f0d)).withAlpha (0.05f + rnd.nextFloat() * 0.12f));
-        g.drawLine (x1, y1, x1 + std::cos (ang) * len, y1 + std::sin (ang) * len, 0.6f + rnd.nextFloat() * 0.6f);
+        juce::Path crack;
+        float x = rnd.nextFloat() * (float) w, y = rnd.nextFloat() * (float) h;
+        float ang = rnd.nextFloat() * juce::MathConstants<float>::twoPi;
+        crack.startNewSubPath (x, y);
+        const int segs = 6 + rnd.nextInt (18);
+        for (int k = 0; k < segs; ++k)
+        {
+            ang += (rnd.nextFloat() - 0.5f) * 1.1f;
+            const float len = 6.0f + rnd.nextFloat() * 16.0f;
+            x += std::cos (ang) * len;
+            y += std::sin (ang) * len;
+            crack.lineTo (x, y);
+            if (rnd.nextFloat() < 0.18f)
+            {
+                // Liten förgrening.
+                float bx = x, by = y, ba = ang + (rnd.nextBool() ? 0.9f : -0.9f);
+                crack.startNewSubPath (bx, by);
+                for (int m = 0; m < 3 + rnd.nextInt (4); ++m)
+                {
+                    ba += (rnd.nextFloat() - 0.5f) * 1.0f;
+                    bx += std::cos (ba) * (4.0f + rnd.nextFloat() * 8.0f);
+                    by += std::sin (ba) * (4.0f + rnd.nextFloat() * 8.0f);
+                    crack.lineTo (bx, by);
+                }
+                crack.startNewSubPath (x, y);
+            }
+        }
+        g.setColour (juce::Colour (0xff8c877c).withAlpha (0.16f));
+        g.strokePath (crack, juce::PathStrokeType (0.8f), juce::AffineTransform::translation (0.7f, 0.9f));
+        g.setColour (juce::Colours::black.withAlpha (0.55f));
+        g.strokePath (crack, juce::PathStrokeType (0.9f));
     }
 
-    // Avnött kant och smuts i hörnen.
+    // Fina repor.
+    for (int i = 0; i < 260; ++i)
+    {
+        const float x1 = rnd.nextFloat() * (float) w, y1 = rnd.nextFloat() * (float) h;
+        const float len = 4.0f + std::pow (rnd.nextFloat(), 2.0f) * 70.0f;
+        const float a = rnd.nextFloat() * juce::MathConstants<float>::twoPi;
+        g.setColour (juce::Colour (0xff9a968c).withAlpha (0.03f + rnd.nextFloat() * 0.06f));
+        g.drawLine (x1, y1, x1 + std::cos (a) * len, y1 + std::sin (a) * len, 0.6f);
+    }
+
+    // Mörk vinjett: ljuset faller in uppifrån mitten.
     const auto r = juce::Rectangle<float> (0.0f, 0.0f, (float) w, (float) h);
-    juce::ColourGradient vignette (juce::Colours::transparentBlack, r.getCentreX(), r.getCentreY(),
-                                   juce::Colour (0xff0b0a08).withAlpha (0.45f), 0.0f, 0.0f, true);
+    juce::ColourGradient vignette (juce::Colours::transparentBlack, r.getCentreX(), r.getHeight() * 0.3f,
+                                   juce::Colour (0xff000000).withAlpha (0.55f), 0.0f, (float) h, true);
     g.setGradientFill (vignette);
     g.fillRect (r);
     return img;
@@ -251,47 +278,59 @@ void LookAndFeel::drawRotarySlider (juce::Graphics& g, int x, int y, int width, 
     const auto c = bounds.getCentre();
     const float angle = startAngle + pos * (endAngle - startAngle);
 
-    // Skalstreck målade på plåten (0–10).
+    // Tunna tryckta skalstreck runt ratten.
     const bool bipolar = slider.getMinimum() < 0.0 && juce::approximatelyEqual (slider.getMinimum(), -slider.getMaximum());
     for (int i = 0; i <= 10; ++i)
     {
         const float a = startAngle + (endAngle - startAngle) * (float) i / 10.0f;
         const bool major = i == 0 || i == 10 || (bipolar && i == 5);
-        const float r1 = radius * (major ? 0.80f : 0.86f), r2 = radius * 0.97f;
-        g.setColour (colours::text.withAlpha (major ? 0.85f : 0.5f));
-        g.drawLine (c.x + std::sin (a) * r1, c.y - std::cos (a) * r1, c.x + std::sin (a) * r2, c.y - std::cos (a) * r2,
-                    major ? 1.6f : 1.1f);
+        const float r1 = radius * (major ? 0.82f : 0.87f), r2 = radius * 0.97f;
+        g.setColour (colours::text.withAlpha (major ? 0.55f : 0.32f));
+        g.drawLine (c.x + std::sin (a) * r1, c.y - std::cos (a) * r1, c.x + std::sin (a) * r2, c.y - std::cos (a) * r2, 0.9f);
     }
 
     // Skugga under ratten.
-    const float skirt = radius * 0.74f;
-    g.setColour (juce::Colours::black.withAlpha (0.45f));
-    g.fillEllipse (c.x - skirt + 1.5f, c.y - skirt + 2.5f, skirt * 2.0f, skirt * 2.0f);
+    const float skirt = radius * 0.76f;
+    g.setColour (juce::Colours::black.withAlpha (0.6f));
+    g.fillEllipse (c.x - skirt + 1.0f, c.y - skirt + 3.0f, skirt * 2.0f, skirt * 2.0f);
 
-    // Kjol (räfflad bakelit).
-    g.setGradientFill (juce::ColourGradient (juce::Colour (0xff3a3a36), c.x - skirt, c.y - skirt,
-                                             juce::Colour (0xff0c0c0b), c.x + skirt, c.y + skirt, false));
+    // Svart räfflad kjol.
+    g.setGradientFill (juce::ColourGradient (juce::Colour (0xff2a2a28), c.x, c.y - skirt,
+                                             juce::Colour (0xff050505), c.x, c.y + skirt, false));
     g.fillEllipse (c.x - skirt, c.y - skirt, skirt * 2.0f, skirt * 2.0f);
-    g.setColour (juce::Colours::black.withAlpha (0.5f));
-    for (int i = 0; i < 24; ++i)
+    for (int i = 0; i < 30; ++i)
     {
-        const float a = angle + juce::MathConstants<float>::twoPi * (float) i / 24.0f;
-        g.drawLine (c.x + std::sin (a) * skirt * 0.86f, c.y - std::cos (a) * skirt * 0.86f,
-                    c.x + std::sin (a) * skirt, c.y - std::cos (a) * skirt, 1.0f);
+        const float a = angle + juce::MathConstants<float>::twoPi * (float) i / 30.0f;
+        g.setColour (juce::Colours::white.withAlpha (0.035f + 0.04f * std::max (0.0f, -std::cos (a))));
+        g.drawLine (c.x + std::sin (a) * skirt * 0.84f, c.y - std::cos (a) * skirt * 0.84f,
+                    c.x + std::sin (a) * skirt * 0.99f, c.y - std::cos (a) * skirt * 0.99f, 0.9f);
     }
 
-    // Topp
-    const float cap = skirt * 0.72f;
-    g.setGradientFill (juce::ColourGradient (juce::Colour (0xff2c2c29), c.x - cap * 0.5f, c.y - cap,
-                                             colours::bakelite, c.x + cap * 0.4f, c.y + cap, false));
+    // Borstad aluminiumtopp: koncentriska slipspår + ljusreflex från vänster ovanifrån.
+    const float cap = skirt * 0.60f;
+    g.setGradientFill (juce::ColourGradient (juce::Colour (0xff9a9993), c.x - cap * 0.6f, c.y - cap * 0.7f,
+                                             juce::Colour (0xff36352f), c.x + cap * 0.7f, c.y + cap * 0.8f, false));
     g.fillEllipse (c.x - cap, c.y - cap, cap * 2.0f, cap * 2.0f);
-    g.setColour (juce::Colours::white.withAlpha (0.06f));
+    for (float rr = cap * 0.15f; rr < cap; rr += 1.3f)
+    {
+        g.setColour ((((int) (rr * 7.0f)) % 2 == 0 ? juce::Colours::white : juce::Colours::black).withAlpha (0.045f));
+        g.drawEllipse (c.x - rr, c.y - rr, rr * 2.0f, rr * 2.0f, 0.7f);
+    }
+    {
+        // Ljuskil över toppen (anisotrop reflex som på borstad metall).
+        juce::Path wedge;
+        wedge.addPieSegment (c.x - cap, c.y - cap, cap * 2.0f, cap * 2.0f, -2.6f, -1.9f, 0.0f);
+        wedge.addPieSegment (c.x - cap, c.y - cap, cap * 2.0f, cap * 2.0f, 0.54f, 1.24f, 0.0f);
+        g.setColour (juce::Colours::white.withAlpha (0.12f));
+        g.fillPath (wedge);
+    }
+    g.setColour (juce::Colours::black.withAlpha (0.55f));
     g.drawEllipse (c.x - cap, c.y - cap, cap * 2.0f, cap * 2.0f, 1.0f);
 
-    // Visare: vit målad linje från toppen ut över kjolen.
+    // Visare: kort ljus markering på kjolen.
     juce::Path pointer;
-    pointer.addRectangle (-1.3f, -skirt * 0.98f, 2.6f, skirt * 0.62f);
-    g.setColour (colours::text);
+    pointer.addRoundedRectangle (-1.1f, -skirt * 0.98f, 2.2f, skirt - cap - 1.0f, 1.0f);
+    g.setColour (colours::text.withAlpha (0.95f));
     g.fillPath (pointer, juce::AffineTransform::rotation (angle).translated (c.x, c.y));
 }
 
@@ -366,6 +405,40 @@ void LookAndFeel::drawButtonText (juce::Graphics& g, juce::TextButton& b, bool, 
     g.drawFittedText (b.getButtonText(), r, juce::Justification::centred, 1);
 }
 
+juce::Label* LookAndFeel::createSliderTextBox (juce::Slider& slider)
+{
+    // Sifferrutor (Pulses, Från/Till …): mörkt fönster med ljus text, som resten av panelen.
+    auto* l = LookAndFeel_V4::createSliderTextBox (slider);
+    l->setColour (juce::Label::backgroundColourId, colours::bakelite);
+    l->setColour (juce::Label::textColourId, colours::text);
+    l->setColour (juce::Label::outlineColourId, colours::engraveLight.withAlpha (0.7f));
+    l->setColour (juce::TextEditor::backgroundColourId, colours::bakelite);
+    l->setColour (juce::TextEditor::textColourId, colours::text);
+    l->setColour (juce::TextEditor::highlightColourId, colours::lampAmber.withAlpha (0.4f));
+    l->setFont (panelFont (14.0f, false));
+    return l;
+}
+
+void LookAndFeel::drawLabel (juce::Graphics& g, juce::Label& label)
+{
+    // Sifferrutor i sliders: mörkt nedsänkt fönster med ljus text.
+    if (dynamic_cast<juce::Slider*> (label.getParentComponent()) != nullptr)
+    {
+        const auto r = label.getLocalBounds().toFloat();
+        g.setColour (colours::bakelite);
+        g.fillRect (r.reduced (0.5f));
+        drawEngravedBox (g, r.reduced (0.5f));
+        if (! label.isBeingEdited())
+        {
+            g.setColour (colours::text.withAlpha (label.isEnabled() ? 0.95f : 0.4f));
+            g.setFont (panelFont (14.0f, false));
+            g.drawFittedText (label.getText(), label.getLocalBounds().reduced (2, 0), juce::Justification::centred, 1);
+        }
+        return;
+    }
+    LookAndFeel_V4::drawLabel (g, label);
+}
+
 void LookAndFeel::drawPopupMenuBackground (juce::Graphics& g, int width, int height)
 {
     g.fillAll (colours::metalDark);
@@ -379,8 +452,8 @@ Control::Control (juce::AudioProcessorValueTreeState& apvts, const juce::String&
 {
     label.setText (text.toUpperCase(), juce::dontSendNotification);
     label.setJustificationType (juce::Justification::centred);
-    label.setFont (panelFont (12.0f).withExtraKerningFactor (0.08f));
-    label.setColour (juce::Label::textColourId, colours::text.withAlpha (0.85f));
+    label.setFont (panelFont (12.5f, false).withExtraKerningFactor (0.14f));
+    label.setColour (juce::Label::textColourId, colours::text.withAlpha (0.72f));
     label.setInterceptsMouseClicks (false, false);
     addAndMakeVisible (label);
 
@@ -569,7 +642,7 @@ StesoLeadEditor::StesoLeadEditor (StesoLeadProcessor& p)
     keyboard.setLowestVisibleKey (36);
     keyboard.setKeyWidth (22.0f);
     // Gulnade tangenter.
-    keyboard.setColour (juce::MidiKeyboardComponent::whiteNoteColourId, juce::Colour (0xffcbc2a6));
+    keyboard.setColour (juce::MidiKeyboardComponent::whiteNoteColourId, juce::Colour (0xffaaa597));
     keyboard.setColour (juce::MidiKeyboardComponent::blackNoteColourId, juce::Colour (0xff141412));
     keyboard.setColour (juce::MidiKeyboardComponent::keyDownOverlayColourId, steso::ui::colours::lampRed.withAlpha (0.55f));
     keyboard.setColour (juce::MidiKeyboardComponent::mouseOverKeyOverlayColourId, steso::ui::colours::lampAmber.withAlpha (0.25f));
@@ -581,6 +654,8 @@ StesoLeadEditor::StesoLeadEditor (StesoLeadProcessor& p)
     keyboard.setWantsKeyboardFocus (false);
     content.addAndMakeVisible (keyboard);
     content.addAndMakeVisible (seqPanel);
+    // Panelerna skapades före setLookAndFeel: låt alla barn (t.ex. sifferrutor) byggas om med vårt skin.
+    sendLookAndFeelChange();
 
     addAndMakeVisible (content);
     // Utfällda delar sparas i projektet (inte som parametrar).
@@ -666,16 +741,21 @@ void StesoLeadEditor::paint (juce::Graphics& g)
     if (showSeq)  { y += unitGap; drawUnit (y, seqH);  y += seqH; }
     if (showKeys) { y += unitGap; drawUnit (y, keysH); y += keysH; }
 
+    // Logga: präglad i plåten, nästan ton-i-ton (skugga uppåt-vänster, ljuskant nedåt-höger).
     auto header = juce::Rectangle<float> ((float) earW + 20.0f, 8.0f, 600.0f, 44.0f);
-    const auto title = panelFont (32.0f).withExtraKerningFactor (0.16f);
+    const auto title = panelFont (30.0f).withExtraKerningFactor (0.22f);
     g.setFont (title);
-    g.setColour (colours::text);
+    g.setColour (juce::Colours::black.withAlpha (0.7f));
+    g.drawText ("BAKELIT", header.translated (-0.8f, -0.8f), juce::Justification::centredLeft);
+    g.setColour (juce::Colours::white.withAlpha (0.07f));
+    g.drawText ("BAKELIT", header.translated (0.8f, 0.9f), juce::Justification::centredLeft);
+    g.setColour (colours::metal.brighter (0.55f));
     g.drawText ("BAKELIT", header, juce::Justification::centredLeft);
 
     const float w = juce::GlyphArrangement::getStringWidth (title, "BAKELIT");
-    auto sub = header.withTrimmedLeft (w + 16.0f).translated (0.0f, 4.0f);
-    g.setFont (panelFont (13.0f, false).withExtraKerningFactor (0.12f));
-    g.setColour (colours::dimText);
+    auto sub = header.withTrimmedLeft (w + 14.0f).translated (0.0f, 4.0f);
+    g.setFont (panelFont (11.5f, false).withExtraKerningFactor (0.2f));
+    g.setColour (colours::dimText.withAlpha (0.75f));
     g.drawText (juce::String::fromUTF8 ("FALK INSTRUMENTS  ·  v" STESO_VERSION), sub, juce::Justification::centredLeft);
 }
 

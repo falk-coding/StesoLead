@@ -57,7 +57,7 @@ Commits: författare `Hans Falk <hans.falk@gmail.com>`. Pusha direkt till main (
 | Installation | `packaging/mac`, `packaging/windows` |
 
 ## Status (2026-11-01, v1.7.0)
-Klart: motor, Fat-funktioner, sekvenser med MIDI-export/markörer, sovjetinspirerat skin med svenska texter,
+Klart: motor, Fat-funktioner, sekvenser med MIDI-export/markörer, mörkt slitet skin (v1.7: nästan svart plåt med sprickor, tunna linjer, aluminiumrattar, präglad logga) med svenska texter,
 rack-layout med fällbar stegsekvenserare/klaviatur, 149 presets, egna förinställningar, namnbyte till Bakelit,
 Polyrytm-läge (v1.7: 4 spår Bar/Div, euklid, tonhöjdssteg, ringvisning; parametern `polyOn` går före `seqMode`).
 Hans har provlyssnat några presets – "låter VÄLDIGT bra". Undertoner (v1.7): `osc1SubDiv`/`osc2SubDiv` ÷1–16 + nivåer `mixSubh1`/`mixSubh2` (0 = av), samma vågform som oscillatorn.

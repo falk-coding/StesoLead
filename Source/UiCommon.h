@@ -4,19 +4,20 @@
 #include <juce_gui_basics/juce_gui_basics.h>
 #include <juce_audio_utils/juce_audio_utils.h>
 
-// Skin: sliten sovjetisk studioapparat – grå emaljerad plåt, svart bakelit, krämvit målad text,
-// röda och bärnstensfärgade signallampor.
+// Skin (v1.7): mörk, sliten apparat – nästan svart plåt med sprickor, tunna graverade linjer,
+// rattar med borstad aluminiumtopp, ljusgrå text, röda och bärnstensfärgade signallampor.
 namespace steso::ui
 {
 namespace colours
 {
-    inline const juce::Colour metal        { 0xff3a3b37 };   // panelens grundfärg
-    inline const juce::Colour metalDark    { 0xff262723 };
-    inline const juce::Colour engraveDark  { 0xff141512 };
-    inline const juce::Colour engraveLight { 0xff5a5b52 };
-    inline const juce::Colour text         { 0xffd8d0b8 };   // gulnad vit färg
-    inline const juce::Colour dimText      { 0xff9a9483 };
-    inline const juce::Colour bakelite     { 0xff151513 };
+    inline const juce::Colour metal        { 0xff1c1b19 };   // panelens grundfärg
+    inline const juce::Colour metalDark    { 0xff121110 };
+    inline const juce::Colour engraveDark  { 0xff070706 };
+    inline const juce::Colour engraveLight { 0xff3b3a36 };
+    inline const juce::Colour text         { 0xffbdbbb4 };   // ljusgrå tryckfärg
+    inline const juce::Colour dimText      { 0xff75736c };
+    inline const juce::Colour bakelite     { 0xff0c0c0b };
+    inline const juce::Colour hairline     { 0xff8d8b84 };   // tunna linjer mellan sektionerna
     inline const juce::Colour lampRed      { 0xffe2482c };
     inline const juce::Colour lampRedOff   { 0xff3d1e17 };
     inline const juce::Colour lampAmber    { 0xffe4a43c };
@@ -65,6 +66,8 @@ public:
     void drawButtonBackground (juce::Graphics&, juce::Button&, const juce::Colour&, bool highlighted, bool down) override;
     void drawPopupMenuBackground (juce::Graphics&, int width, int height) override;
     void drawButtonText (juce::Graphics&, juce::TextButton&, bool highlighted, bool down) override;
+    juce::Label* createSliderTextBox (juce::Slider&) override;
+    void drawLabel (juce::Graphics&, juce::Label&) override;
 };
 
 // En ratt eller en väljare med namn under.
