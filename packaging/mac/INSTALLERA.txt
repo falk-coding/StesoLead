@@ -23,6 +23,6 @@ Tips i pluginet:
 - Dubbelklicka på en ratt = tillbaka till standardvärdet.
 - Modhjulet lägger till vibrato, pitchbend följer "Bend" i VOICE.
 - Mode: Poly (8 röster), Mono (triggar om varje ton), Legato (glider utan omtrigg – bäst för leads).
-- Sekvenser: välj Mode Seq eller Arp, håll en tangent och tryck play i DAW:en.
+- Stegvis sekvensering: fäll ut med Sekv. (Seq), välj Mode Seq eller Arp, håll en tangent och tryck play i DAW:en.
   Dra rutan "Dra MIDI till DAW" till ett MIDI-spår för att få mönstret som klipp – sekvensern stängs då av.
-- Egna presets: knappen Spara (Save). Filerna hamnar i Dokument/StesoLead/Presets.
+- Egna förinställningar (presets): knappen Spara (Save). Filerna hamnar i Dokument/StesoLead/Presets.

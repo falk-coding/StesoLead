@@ -74,7 +74,20 @@ void drawSectionFrame (juce::Graphics& g, juce::Rectangle<float> r, const juce::
     const auto lat = title.fromFirstOccurrenceOf ("|", false, false);
 
     auto header = r.removeFromTop (24.0f).reduced (10.0f, 0.0f).withTrimmedTop (3.0f);
-    const auto f1 = panelFont (15.0f).withExtraKerningFactor (0.08f);
+
+    // Krymp rubriken tills svenska + (engelska) får plats i smala sektioner.
+    const auto latUpper = lat.isNotEmpty() ? "(" + lat.toUpperCase() + ")" : juce::String();
+    float size = 15.0f;
+    auto fits = [&] (float sz)
+    {
+        const float w1 = juce::GlyphArrangement::getStringWidth (panelFont (sz).withExtraKerningFactor (0.08f), cyr);
+        const float w2 = latUpper.isEmpty() ? 0.0f
+                       : juce::GlyphArrangement::getStringWidth (panelFont (sz * 0.73f, false).withExtraKerningFactor (0.1f), latUpper) + 8.0f;
+        return w1 + w2 + 12.0f <= header.getWidth();
+    };
+    while (size > 11.0f && ! fits (size))
+        size -= 0.5f;
+    const auto f1 = panelFont (size).withExtraKerningFactor (0.08f);
     g.setFont (f1);
     g.setColour (colours::text);
     g.drawText (cyr, header, juce::Justification::centredLeft);
@@ -82,10 +95,10 @@ void drawSectionFrame (juce::Graphics& g, juce::Rectangle<float> r, const juce::
 
     if (lat.isNotEmpty())
     {
-        const auto f2 = panelFont (11.0f, false).withExtraKerningFactor (0.1f);
+        const auto f2 = panelFont (size * 0.73f, false).withExtraKerningFactor (0.1f);
         g.setFont (f2);
         g.setColour (colours::dimText);
-        const auto en = "(" + lat.toUpperCase() + ")";
+        const auto en = latUpper;
         g.drawText (en, juce::Rectangle<float> (x, header.getY() + 1.0f, 220.0f, header.getHeight()),
                     juce::Justification::centredLeft);
         x += juce::GlyphArrangement::getStringWidth (f2, en) + 8.0f;
@@ -523,7 +536,7 @@ StesoLeadEditor::StesoLeadEditor (StesoLeadProcessor& p)
         content.addAndMakeVisible (c);
 
     rebuildPresetList();
-    presetBox.setTextWhenNothingSelected ("Preset");
+    presetBox.setTextWhenNothingSelected (juce::String::fromUTF8 ("Förinställning (Preset)"));
     presetBox.onChange = [this]
     {
         const int id = presetBox.getSelectedId();
@@ -539,10 +552,10 @@ StesoLeadEditor::StesoLeadEditor (StesoLeadProcessor& p)
     content.addAndMakeVisible (prevButton);
     content.addAndMakeVisible (nextButton);
 
-    saveButton.setTooltip (juce::String::fromUTF8 ("Spara inställningarna som eget preset (save as user preset): ")
+    saveButton.setTooltip (juce::String::fromUTF8 ("Spara inställningarna som egen förinställning (save as user preset): ")
                            + StesoLeadProcessor::getUserPresetFolder().getFullPathName());
     saveButton.onClick = [this] { savePresetDialog(); };
-    deleteButton.setTooltip (juce::String::fromUTF8 ("Ta bort det valda egna presetet (delete the selected user preset)"));
+    deleteButton.setTooltip (juce::String::fromUTF8 ("Ta bort den valda egna förinställningen (delete the selected user preset)"));
     deleteButton.onClick = [this] { deletePresetDialog(); };
     content.addAndMakeVisible (saveButton);
     content.addAndMakeVisible (deleteButton);
@@ -576,7 +589,7 @@ StesoLeadEditor::StesoLeadEditor (StesoLeadProcessor& p)
     }
     seqToggle.setToggleState (showSeq, juce::dontSendNotification);
     keysToggle.setToggleState (showKeys, juce::dontSendNotification);
-    seqToggle.setTooltip (juce::String::fromUTF8 ("Visa/dölj sekvensern (show/hide sequencer). Lampan lyser gult när den spelar."));
+    seqToggle.setTooltip (juce::String::fromUTF8 ("Visa/dölj stegvis sekvensering (show/hide step sequencer). Lampan lyser gult när den spelar."));
     keysToggle.setTooltip (juce::String::fromUTF8 ("Visa/dölj klaviaturen (show/hide keyboard)"));
     seqToggle.onClick = [this] { setPanelsVisible (seqToggle.getToggleState(), showKeys); };
     keysToggle.onClick = [this] { setPanelsVisible (showSeq, keysToggle.getToggleState()); };
@@ -690,9 +703,9 @@ void StesoLeadEditor::resized()
     const int unit = r.getWidth() / 16;   // 16 kolumner totalt per rad
 
     auto row1 = r.removeFromTop (rowH);
-    osc1.setBounds (row1.removeFromLeft (unit * 3));
+    osc1.setBounds (row1.removeFromLeft (unit * 4));
     osc2.setBounds (row1.removeFromLeft (unit * 4));
-    osc3.setBounds (row1.removeFromLeft (unit * 3));
+    osc3.setBounds (row1.removeFromLeft (unit * 4));
     mixer.setBounds (row1);
 
     auto row2 = r.removeFromTop (rowH);
@@ -748,7 +761,7 @@ void StesoLeadEditor::timerCallback()
     if (v != lastVoices)
     {
         lastVoices = v;
-        output.setHeaderNote (juce::String::fromUTF8 ("RÖSTER ") + juce::String (v) + "/"
+        output.setHeaderNote (juce::String::fromUTF8 ("STÄMMOR ") + juce::String (v) + "/"
                               + juce::String (steso::dsp::SynthEngine::maxVoices));
     }
 }
@@ -849,7 +862,7 @@ void StesoLeadEditor::savePresetDialog()
     if (suggested.isEmpty())
         suggested = processor.getProgramName (processor.getCurrentProgram()) + " 2";
 
-    auto* window = new juce::AlertWindow ("Spara preset (Save preset)",
+    auto* window = new juce::AlertWindow (juce::String::fromUTF8 ("Spara förinställning (Save preset)"),
                                           juce::String::fromUTF8 ("Namn (name). Sparas i (saved in):\n") + folder.getFullPathName(),
                                           juce::MessageBoxIconType::NoIcon, this);
     window->setLookAndFeel (&lnf);
@@ -914,7 +927,7 @@ void StesoLeadEditor::deletePresetDialog()
     juce::Component::SafePointer<StesoLeadEditor> safe (this);
     juce::AlertWindow::showAsync (juce::MessageBoxOptions()
                                       .withIconType (juce::MessageBoxIconType::QuestionIcon)
-                                      .withTitle (juce::String::fromUTF8 ("Ta bort preset? (Delete preset?)"))
+                                      .withTitle (juce::String::fromUTF8 ("Ta bort förinställning? (Delete preset?)"))
                                       .withMessage ("\"" + file.getFileNameWithoutExtension() + "\"")
                                       .withButton (juce::String::fromUTF8 ("Ta bort (Delete)"))
                                       .withButton ("Avbryt (Cancel)"),

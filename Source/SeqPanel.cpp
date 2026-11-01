@@ -236,7 +236,7 @@ void StepGrid::updatePlayhead()
 DragBox::DragBox (StesoLeadProcessor& p) : processor (p)
 {
     setMouseCursor (juce::MouseCursor::DraggingHandCursor);
-    setTooltip (juce::String::fromUTF8 ("Dra till ett MIDI-spår i din DAW. Sekvensern stängs sedan av så att det inte låter dubbelt. (Drag to a MIDI track in your DAW. The sequencer is then switched off to avoid doubled notes.)"));
+    setTooltip (juce::String::fromUTF8 ("Dra till ett MIDI-spår i din DAW. Den stegvisa sekvenseringen stängs sedan av så att det inte låter dubbelt. (Drag to a MIDI track in your DAW. The sequencer is then switched off to avoid doubled notes.)"));
 }
 
 void DragBox::paint (juce::Graphics& g)
@@ -330,7 +330,7 @@ SeqPanel::SeqPanel (StesoLeadProcessor& p) : processor (p), grid (p), dragBox (p
     dragBox.getRange = [this] { return computeRange(); };
     addAndMakeVisible (dragBox);
 
-    rangeMode.addItem (juce::String::fromUTF8 ("Längd: DAW:ns locators (length: DAW locators)"), 1);
+    rangeMode.addItem (juce::String::fromUTF8 ("Längd: DAW:ns markörer (length: DAW locators)"), 1);
     rangeMode.addItem (juce::String::fromUTF8 ("Längd: från/till takt (length: from/to bar)"), 2);
     addAndMakeVisible (rangeMode);
 
@@ -357,7 +357,7 @@ SeqPanel::SeqPanel (StesoLeadProcessor& p) : processor (p), grid (p), dragBox (p
     setupLabel (hitsLabel, "Hits");
     setupLabel (rotateLabel, "Rot");
 
-    bypassLabel.setText (juce::String::fromUTF8 ("Sekvenser av – i DAW:en (sequencer off)"), juce::dontSendNotification);
+    bypassLabel.setText (juce::String::fromUTF8 ("Sekvensering av – i DAW:en (sequencer off)"), juce::dontSendNotification);
     bypassLabel.setFont (panelFont (14.0f));
     bypassLabel.setColour (juce::Label::textColourId, colours::lampRed);
     addChildComponent (bypassLabel);
@@ -421,7 +421,7 @@ DragBox::Range SeqPanel::computeRange() const
         r.from = host.loopStart;
         r.to = host.loopEnd;
         r.fromLocators = true;
-        prefix = "Locators: ";
+        prefix = juce::String::fromUTF8 ("Markörer (locators): ");
     }
     else
     {
@@ -430,7 +430,7 @@ DragBox::Range SeqPanel::computeRange() const
         r.from = (a - 1.0) * barPpq;
         r.to = (b - 1.0) * barPpq;
         if (rangeMode.getSelectedId() != 2)
-            prefix = juce::String::fromUTF8 ("Inga locators från DAW:n (no DAW locators) – Från/Till används. ");
+            prefix = juce::String::fromUTF8 ("Inga markörer från DAW:n (no DAW locators) – Från/Till används. ");
     }
 
     const auto a = formatBar (r.from, barPpq), b = formatBar (r.to, barPpq);
@@ -443,7 +443,7 @@ DragBox::Range SeqPanel::computeRange() const
 
 void SeqPanel::paint (juce::Graphics& g)
 {
-    drawSectionFrame (g, getLocalBounds().toFloat().reduced (3.0f), juce::String::fromUTF8 ("SEKVENSER|Sequencer / arp"));
+    drawSectionFrame (g, getLocalBounds().toFloat().reduced (3.0f), juce::String::fromUTF8 ("STEGVIS SEKVENSERING|Step sequencer / arp"));
 }
 
 void SeqPanel::resized()

@@ -51,15 +51,15 @@ private:
     bool showSeq = false, showKeys = false;
     juce::Array<juce::File> userFiles;
 
-    steso::ui::Section osc1 { "TONGENERATOR 1|Osc 1", steso::ui::colours::accent };
-    steso::ui::Section osc2 { "TONGENERATOR 2|Osc 2", steso::ui::colours::accent };
-    steso::ui::Section osc3 { "TONGENERATOR 3|Osc 3", steso::ui::colours::accent };
+    steso::ui::Section osc1 { "SPÄNNINGSSTYRD OSCILLATOR 1|VCO 1", steso::ui::colours::accent };
+    steso::ui::Section osc2 { "SPÄNNINGSSTYRD OSCILLATOR 2|VCO 2", steso::ui::colours::accent };
+    steso::ui::Section osc3 { "SPÄNNINGSSTYRD OSCILLATOR 3|VCO 3", steso::ui::colours::accent };
     steso::ui::Section mixer { "NIVÅER|Mixer", steso::ui::colours::accent };
-    steso::ui::Section filter { "FILTER", steso::ui::colours::accent2 };
+    steso::ui::Section filter { "SPÄNNINGSSTYRT FILTER|VCF", steso::ui::colours::accent2 };
     steso::ui::Section filterEnv { "FILTERKURVA|Filter env", steso::ui::colours::accent2 };
     steso::ui::Section ampEnv { "VOLYMKURVA|Amp env", steso::ui::colours::accent };
     steso::ui::Section lfo { "MODULATION|LFO", steso::ui::colours::accent2 };
-    steso::ui::Section voice { "RÖST|Voice", steso::ui::colours::accent };
+    steso::ui::Section voice { "STÄMMA|Voice", steso::ui::colours::accent };
     steso::ui::Section fx { "EFFEKTER|Effects", steso::ui::colours::accent2 };
     steso::ui::Section output { "UTGÅNG|Output", steso::ui::colours::accent };
 
