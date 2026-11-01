@@ -147,24 +147,42 @@ void drawRackEar (juce::Graphics& g, juce::Rectangle<float> r)
     }
 }
 
+namespace
+{
+    // Mjuka fläckar i klungor (rost, ärg, sot) – många små ovaler med låg täckning.
+    void blotch (juce::Graphics& g, juce::Random& rnd, float cx, float cy, float size, juce::Colour col, int count, float alpha)
+    {
+        for (int k = 0; k < count; ++k)
+        {
+            const float a = rnd.nextFloat() * juce::MathConstants<float>::twoPi;
+            const float d = std::pow (rnd.nextFloat(), 0.7f) * size;
+            const float x = cx + std::cos (a) * d, y = cy + std::sin (a) * d * 0.8f;
+            const float r = 1.0f + std::pow (rnd.nextFloat(), 3.0f) * size * 0.35f;
+            g.setGradientFill (juce::ColourGradient (col.withAlpha (alpha * (0.4f + rnd.nextFloat())), x, y,
+                                                     col.withAlpha (0.0f), x + r, y, true));
+            g.fillEllipse (x - r, y - r, r * 2.0f, r * 2.0f);
+        }
+    }
+}
+
 juce::Image makePanelTexture (int w, int h)
 {
     juce::Image img (juce::Image::RGB, w, h, false);
     juce::Random rnd (19611961);   // fast frö: samma slitage varje gång
 
     {
+        // Kall, grovkornig plåt: korn + svaga horisontella slipspår.
         juce::Image::BitmapData data (img, juce::Image::BitmapData::writeOnly);
         const auto base = colours::metal;
         for (int y = 0; y < h; ++y)
         {
-            const float streak = (float) (rnd.nextInt (5) - 2) * 0.4f;
+            const float streak = (float) (rnd.nextInt (7) - 3) * 0.5f;
             for (int x = 0; x < w; ++x)
             {
-                // Fint korn, lite varmare i rött (bränd lack).
-                const float n = (rnd.nextFloat() - 0.5f) * 7.0f + streak;
-                const auto px = juce::Colour::fromRGB ((juce::uint8) juce::jlimit (0, 255, (int) (base.getRed() + n * 1.05f)),
+                const float n = (rnd.nextFloat() - 0.5f) * 11.0f + streak;
+                const auto px = juce::Colour::fromRGB ((juce::uint8) juce::jlimit (0, 255, (int) (base.getRed() + n * 0.95f)),
                                                        (juce::uint8) juce::jlimit (0, 255, (int) (base.getGreen() + n)),
-                                                       (juce::uint8) juce::jlimit (0, 255, (int) (base.getBlue() + n * 0.9f)));
+                                                       (juce::uint8) juce::jlimit (0, 255, (int) (base.getBlue() + n * 1.08f)));
                 data.setPixelColour (x, y, px);
             }
         }
@@ -172,71 +190,134 @@ juce::Image makePanelTexture (int w, int h)
 
     juce::Graphics g (img);
 
-    // Fläckar: mörka sotfläckar och några ljusare nötta partier.
-    for (int i = 0; i < 90; ++i)
-    {
-        const float cx = rnd.nextFloat() * (float) w, cy = rnd.nextFloat() * (float) h;
-        const float rad = 30.0f + rnd.nextFloat() * 180.0f;
-        const bool dark = rnd.nextFloat() < 0.75f;
-        const auto col = dark ? juce::Colour (0xff050504) : juce::Colour (0xff3a3630);
-        g.setGradientFill (juce::ColourGradient (col.withAlpha (0.06f + rnd.nextFloat() * 0.12f), cx, cy,
-                                                 col.withAlpha (0.0f), cx + rad, cy, true));
-        g.fillEllipse (cx - rad, cy - rad * 0.7f, rad * 2.0f, rad * 1.4f);
-    }
+    // Sot och nötta, ljusare partier i stor skala.
+    for (int i = 0; i < 70; ++i)
+        blotch (g, rnd, rnd.nextFloat() * (float) w, rnd.nextFloat() * (float) h, 60.0f + rnd.nextFloat() * 160.0f,
+                juce::Colour (0xff000000), 10, 0.10f);
+    for (int i = 0; i < 25; ++i)
+        blotch (g, rnd, rnd.nextFloat() * (float) w, rnd.nextFloat() * (float) h, 40.0f + rnd.nextFloat() * 120.0f,
+                juce::Colour (0xff4a5258), 8, 0.05f);
 
-    // Sprickor i lacken: förgrenade, tunna, mörka med en svag ljus kant.
-    for (int i = 0; i < 18; ++i)
+    // Rost: brunröda klungor, tätast nära kanter och i hörn.
+    for (int i = 0; i < 38; ++i)
+    {
+        const bool edge = rnd.nextFloat() < 0.6f;
+        const float x = edge ? (rnd.nextBool() ? rnd.nextFloat() * 80.0f : (float) w - rnd.nextFloat() * 80.0f) : rnd.nextFloat() * (float) w;
+        const float y = rnd.nextFloat() * (float) h;
+        blotch (g, rnd, x, y, 10.0f + rnd.nextFloat() * 45.0f, juce::Colour (0xff5a2c14), 40, 0.16f);
+        blotch (g, rnd, x, y, 6.0f + rnd.nextFloat() * 20.0f, juce::Colour (0xff8a4a1e), 18, 0.10f);
+    }
+    // Ärg: kallt blågröna stänk.
+    for (int i = 0; i < 22; ++i)
+        blotch (g, rnd, rnd.nextFloat() * (float) w, rnd.nextFloat() * (float) h, 8.0f + rnd.nextFloat() * 30.0f,
+                juce::Colour (0xff3f6a66), 30, 0.10f);
+
+    // Sprickor i lacken.
+    for (int i = 0; i < 26; ++i)
     {
         juce::Path crack;
         float x = rnd.nextFloat() * (float) w, y = rnd.nextFloat() * (float) h;
         float ang = rnd.nextFloat() * juce::MathConstants<float>::twoPi;
         crack.startNewSubPath (x, y);
-        const int segs = 6 + rnd.nextInt (18);
+        const int segs = 5 + rnd.nextInt (26);
         for (int k = 0; k < segs; ++k)
         {
-            ang += (rnd.nextFloat() - 0.5f) * 1.1f;
-            const float len = 6.0f + rnd.nextFloat() * 16.0f;
+            ang += (rnd.nextFloat() - 0.5f) * 1.2f;
+            const float len = 4.0f + rnd.nextFloat() * 15.0f;
             x += std::cos (ang) * len;
             y += std::sin (ang) * len;
             crack.lineTo (x, y);
-            if (rnd.nextFloat() < 0.18f)
+            if (rnd.nextFloat() < 0.2f)
             {
-                // Liten förgrening.
-                float bx = x, by = y, ba = ang + (rnd.nextBool() ? 0.9f : -0.9f);
+                float bx = x, by = y, ba = ang + (rnd.nextBool() ? 1.0f : -1.0f);
                 crack.startNewSubPath (bx, by);
-                for (int m = 0; m < 3 + rnd.nextInt (4); ++m)
+                for (int m = 0; m < 2 + rnd.nextInt (5); ++m)
                 {
                     ba += (rnd.nextFloat() - 0.5f) * 1.0f;
-                    bx += std::cos (ba) * (4.0f + rnd.nextFloat() * 8.0f);
-                    by += std::sin (ba) * (4.0f + rnd.nextFloat() * 8.0f);
+                    bx += std::cos (ba) * (3.0f + rnd.nextFloat() * 8.0f);
+                    by += std::sin (ba) * (3.0f + rnd.nextFloat() * 8.0f);
                     crack.lineTo (bx, by);
                 }
                 crack.startNewSubPath (x, y);
             }
         }
-        g.setColour (juce::Colour (0xff8c877c).withAlpha (0.16f));
-        g.strokePath (crack, juce::PathStrokeType (0.8f), juce::AffineTransform::translation (0.7f, 0.9f));
-        g.setColour (juce::Colours::black.withAlpha (0.55f));
-        g.strokePath (crack, juce::PathStrokeType (0.9f));
+        g.setColour (juce::Colour (0xff9aa3a8).withAlpha (0.13f));
+        g.strokePath (crack, juce::PathStrokeType (0.7f), juce::AffineTransform::translation (0.6f, 0.8f));
+        g.setColour (juce::Colours::black.withAlpha (0.8f));
+        g.strokePath (crack, juce::PathStrokeType (1.0f));
     }
 
-    // Fina repor.
-    for (int i = 0; i < 260; ++i)
+    // Repor.
+    for (int i = 0; i < 420; ++i)
     {
         const float x1 = rnd.nextFloat() * (float) w, y1 = rnd.nextFloat() * (float) h;
-        const float len = 4.0f + std::pow (rnd.nextFloat(), 2.0f) * 70.0f;
+        const float len = 3.0f + std::pow (rnd.nextFloat(), 2.0f) * 80.0f;
         const float a = rnd.nextFloat() * juce::MathConstants<float>::twoPi;
-        g.setColour (juce::Colour (0xff9a968c).withAlpha (0.03f + rnd.nextFloat() * 0.06f));
-        g.drawLine (x1, y1, x1 + std::cos (a) * len, y1 + std::sin (a) * len, 0.6f);
+        g.setColour (juce::Colour (0xffaab3b8).withAlpha (0.025f + rnd.nextFloat() * 0.07f));
+        g.drawLine (x1, y1, x1 + std::cos (a) * len, y1 + std::sin (a) * len, 0.5f + rnd.nextFloat() * 0.5f);
     }
-
-    // Mörk vinjett: ljuset faller in uppifrån mitten.
-    const auto r = juce::Rectangle<float> (0.0f, 0.0f, (float) w, (float) h);
-    juce::ColourGradient vignette (juce::Colours::transparentBlack, r.getCentreX(), r.getHeight() * 0.3f,
-                                   juce::Colour (0xff000000).withAlpha (0.55f), 0.0f, (float) h, true);
-    g.setGradientFill (vignette);
-    g.fillRect (r);
     return img;
+}
+
+juce::Image makeGrimeOverlay (int w, int h)
+{
+    juce::Image img (juce::Image::ARGB, w, h, true);
+    juce::Random rnd (4242);
+    {
+        // Filmkorn: glesa mörka och ljusa prickar över allt.
+        juce::Image::BitmapData data (img, juce::Image::BitmapData::readWrite);
+        for (int y = 0; y < h; ++y)
+            for (int x = 0; x < w; ++x)
+            {
+                const float r = rnd.nextFloat();
+                if (r < 0.10f)
+                    data.setPixelColour (x, y, juce::Colour (0, 0, 0).withAlpha ((juce::uint8) (40 + rnd.nextInt (70))));
+                else if (r > 0.985f)
+                    data.setPixelColour (x, y, juce::Colour (190, 200, 205).withAlpha ((juce::uint8) (10 + rnd.nextInt (25))));
+            }
+    }
+    juce::Graphics g (img);
+    // Damm och smutsfläckar som äter på text och rattar.
+    for (int i = 0; i < 1600; ++i)
+    {
+        const float x = rnd.nextFloat() * (float) w, y = rnd.nextFloat() * (float) h;
+        const float r = 0.4f + std::pow (rnd.nextFloat(), 4.0f) * 2.6f;
+        g.setColour ((rnd.nextFloat() < 0.8f ? juce::Colour (0xff000000) : juce::Colour (0xff8a9298)).withAlpha (0.2f + rnd.nextFloat() * 0.4f));
+        g.fillEllipse (x - r, y - r, r * 2.0f, r * 2.0f);
+    }
+    for (int i = 0; i < 60; ++i)
+        blotch (g, rnd, rnd.nextFloat() * (float) w, rnd.nextFloat() * (float) h, 20.0f + rnd.nextFloat() * 70.0f,
+                juce::Colour (0xff000000), 12, 0.09f);
+    return img;
+}
+
+void drawSpotLight (juce::Graphics& g, juce::Rectangle<float> area, juce::Point<float> spot)
+{
+    // Ljuskägla: genomskinlig i mitten, svart ut mot kanterna (elliptisk – bredare än hög).
+    const float rx = area.getWidth() * 0.62f;
+    juce::ColourGradient cone (juce::Colours::transparentBlack, spot.x, spot.y,
+                               juce::Colours::black.withAlpha (0.8f), spot.x + rx, spot.y, true);
+    cone.addColour (0.3, juce::Colours::black.withAlpha (0.04f));
+    cone.addColour (0.6, juce::Colours::black.withAlpha (0.32f));
+    cone.addColour (0.85, juce::Colours::black.withAlpha (0.6f));
+    g.saveState();
+    g.addTransform (juce::AffineTransform::scale (1.0f, 0.78f, spot.x, spot.y));
+    g.setGradientFill (cone);
+    g.fillRect (area.withY (area.getY() - area.getHeight()).withHeight (area.getHeight() * 4.0f));
+    g.restoreState();
+    // Själva ljuspölen: svagt kallt sken där ljuset träffar.
+    {
+        const float r = area.getWidth() * 0.32f;
+        g.saveState();
+        g.addTransform (juce::AffineTransform::scale (1.0f, 0.55f, spot.x, spot.y));
+        g.setGradientFill (juce::ColourGradient (juce::Colour (0xffc9dbe8).withAlpha (0.07f), spot.x, spot.y,
+                                                 juce::Colour (0xffc9dbe8).withAlpha (0.0f), spot.x + r, spot.y, true));
+        g.fillEllipse (spot.x - r, spot.y - r, r * 2.0f, r * 2.0f);
+        g.restoreState();
+    }
+    // Kallt släpljus: en aning blå ton över alltihop.
+    g.setColour (juce::Colour (0xff0a1a2a).withAlpha (0.18f));
+    g.fillRect (area);
 }
 
 //==============================================================================
@@ -306,31 +387,63 @@ void LookAndFeel::drawRotarySlider (juce::Graphics& g, int x, int y, int width, 
                     c.x + std::sin (a) * skirt * 0.99f, c.y - std::cos (a) * skirt * 0.99f, 0.9f);
     }
 
-    // Borstad aluminiumtopp: koncentriska slipspår + ljusreflex från vänster ovanifrån.
-    const float cap = skirt * 0.60f;
-    g.setGradientFill (juce::ColourGradient (juce::Colour (0xff9a9993), c.x - cap * 0.6f, c.y - cap * 0.7f,
-                                             juce::Colour (0xff36352f), c.x + cap * 0.7f, c.y + cap * 0.8f, false));
-    g.fillEllipse (c.x - cap, c.y - cap, cap * 2.0f, cap * 2.0f);
-    for (float rr = cap * 0.15f; rr < cap; rr += 1.3f)
+    // Varje ratt får eget slitage (fast per parameter, så att det ser likadant ut varje gång).
+    juce::Random wear ((juce::int64) slider.getName().hashCode() * 7919 + 17);
+    const float corrosion = wear.nextFloat() < 0.45f ? 0.3f + wear.nextFloat() * 0.7f : 0.0f;
+    if (corrosion > 0.0f)
     {
-        g.setColour ((((int) (rr * 7.0f)) % 2 == 0 ? juce::Colours::white : juce::Colours::black).withAlpha (0.045f));
-        g.drawEllipse (c.x - rr, c.y - rr, rr * 2.0f, rr * 2.0f, 0.7f);
+        // Ärgskorpa runt kjolens fot: blågröna och rostbruna korn.
+        const float clumpA = wear.nextFloat() * juce::MathConstants<float>::twoPi;   // skorpan samlas på en sida
+        for (int k = 0; k < (int) (90 * corrosion); ++k)
+        {
+            const float a = clumpA + (wear.nextFloat() - 0.5f) * (wear.nextFloat() < 0.75f ? 2.2f : 6.3f);
+            const float d = skirt * (0.92f + std::pow (wear.nextFloat(), 1.8f) * 0.32f);
+            const float rr = 0.4f + wear.nextFloat() * 1.3f;
+            const auto col = wear.nextFloat() < 0.7f ? juce::Colour (0xff4f8a84) : juce::Colour (0xff7a4a26);
+            g.setColour (col.withMultipliedBrightness (0.6f + wear.nextFloat() * 0.5f).withAlpha ((0.2f + wear.nextFloat() * 0.45f) * corrosion));
+            g.fillEllipse (c.x + std::sin (a) * d - rr, c.y - std::cos (a) * d - rr, rr * 2.0f, rr * 2.0f);
+        }
+    }
+
+    // Kall, sliten ståltopp: koncentriska slipspår + matt reflex uppifrån vänster.
+    const float cap = skirt * 0.60f;
+    const float tone = 0.75f + wear.nextFloat() * 0.35f;
+    g.setGradientFill (juce::ColourGradient (juce::Colour (0xff6c7276).withMultipliedBrightness (tone), c.x - cap * 0.6f, c.y - cap * 0.8f,
+                                             juce::Colour (0xff121315), c.x + cap * 0.6f, c.y + cap * 0.9f, false));
+    g.fillEllipse (c.x - cap, c.y - cap, cap * 2.0f, cap * 2.0f);
+    for (float rr = cap * 0.12f; rr < cap; rr += 1.2f)
+    {
+        g.setColour ((((int) (rr * 5.0f)) % 2 == 0 ? juce::Colours::white : juce::Colours::black).withAlpha (0.04f));
+        g.drawEllipse (c.x - rr, c.y - rr, rr * 2.0f, rr * 2.0f, 0.6f);
     }
     {
-        // Ljuskil över toppen (anisotrop reflex som på borstad metall).
         juce::Path wedge;
-        wedge.addPieSegment (c.x - cap, c.y - cap, cap * 2.0f, cap * 2.0f, -2.6f, -1.9f, 0.0f);
-        wedge.addPieSegment (c.x - cap, c.y - cap, cap * 2.0f, cap * 2.0f, 0.54f, 1.24f, 0.0f);
-        g.setColour (juce::Colours::white.withAlpha (0.12f));
+        wedge.addPieSegment (c.x - cap, c.y - cap, cap * 2.0f, cap * 2.0f, -2.5f, -2.0f, 0.0f);
+        g.setColour (juce::Colour (0xffd8e4ec).withAlpha (0.16f));
         g.fillPath (wedge);
     }
-    g.setColour (juce::Colours::black.withAlpha (0.55f));
+    // Repor och fläckar på toppen.
+    for (int k = 0; k < 3 + wear.nextInt (6); ++k)
+    {
+        const float a = wear.nextFloat() * juce::MathConstants<float>::twoPi, d = wear.nextFloat() * cap * 0.8f;
+        const float px = c.x + std::cos (a) * d, py = c.y + std::sin (a) * d;
+        const float la = wear.nextFloat() * juce::MathConstants<float>::twoPi, len = 1.5f + wear.nextFloat() * cap * 0.6f;
+        g.setColour ((wear.nextBool() ? juce::Colours::black : juce::Colour (0xffc8cfd2)).withAlpha (0.12f + wear.nextFloat() * 0.2f));
+        g.drawLine (px, py, px + std::cos (la) * len, py + std::sin (la) * len, 0.6f);
+    }
+    if (corrosion > 0.5f)
+    {
+        g.setColour (juce::Colour (0xff4f8a84).withAlpha (0.25f * corrosion));
+        const float a = wear.nextFloat() * juce::MathConstants<float>::twoPi;
+        g.fillEllipse (c.x + std::cos (a) * cap * 0.5f - cap * 0.3f, c.y + std::sin (a) * cap * 0.5f - cap * 0.25f, cap * 0.6f, cap * 0.5f);
+    }
+    g.setColour (juce::Colours::black.withAlpha (0.7f));
     g.drawEllipse (c.x - cap, c.y - cap, cap * 2.0f, cap * 2.0f, 1.0f);
 
     // Visare: kort ljus markering på kjolen.
     juce::Path pointer;
     pointer.addRoundedRectangle (-1.1f, -skirt * 0.98f, 2.2f, skirt - cap - 1.0f, 1.0f);
-    g.setColour (colours::text.withAlpha (0.95f));
+    g.setColour (colours::text.withAlpha (0.8f));
     g.fillPath (pointer, juce::AffineTransform::rotation (angle).translated (c.x, c.y));
 }
 
@@ -474,6 +587,7 @@ Control::Control (juce::AudioProcessorValueTreeState& apvts, const juce::String&
     else
     {
         slider = std::make_unique<juce::Slider> (juce::Slider::RotaryHorizontalVerticalDrag, juce::Slider::NoTextBox);
+        slider->setName (paramId);   // ger varje ratt eget, fast slitage
         slider->setColour (juce::Slider::rotarySliderFillColourId, colour);
         slider->setPopupDisplayEnabled (true, true, nullptr, 1500);
         slider->setMouseDragSensitivity (220);
@@ -714,6 +828,32 @@ void StesoLeadEditor::applyPanelSize (float scale)
     setSize (juce::roundToInt ((float) baseWidth * scale), juce::roundToInt ((float) h * scale));
     resized();
     repaint();
+}
+
+void StesoLeadEditor::paintOverChildren (juce::Graphics& g)
+{
+    using namespace steso::ui;
+    g.addTransform (content.getTransform());
+    if (grimeOverlay.isNull())
+        grimeOverlay = makeGrimeOverlay (baseWidth, baseHeight);
+
+    // Smuts och korn över allt, sedan punktljuset – per rackenhet, så att varje enhet har sin ljuskägla.
+    const int h = currentBaseHeight();
+    g.drawImage (grimeOverlay, 0, 0, baseWidth, h, 0, 0, baseWidth, h);
+
+    auto light = [&] (int y, int unitH, float strength)
+    {
+        const auto area = juce::Rectangle<float> (0.0f, (float) y, (float) baseWidth, (float) unitH);
+        juce::Graphics::ScopedSaveState save (g);
+        g.reduceClipRegion (area.toNearestInt());
+        g.setOpacity (strength);
+        drawSpotLight (g, area, { (float) baseWidth * 0.46f, (float) y + (float) unitH * 0.32f });
+    };
+    int y = 0;
+    light (y, synthH, 1.0f);
+    y += synthH;
+    if (showSeq)  { y += unitGap; light (y, seqH, 0.85f);  y += seqH; }
+    if (showKeys) { y += unitGap; light (y, keysH, 0.7f); }
 }
 
 void StesoLeadEditor::paint (juce::Graphics& g)

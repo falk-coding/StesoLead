@@ -13,6 +13,7 @@ public:
     ~StesoLeadEditor() override;
 
     void paint (juce::Graphics&) override;
+    void paintOverChildren (juce::Graphics&) override;
     void resized() override;
 
     // Rack-layout: synthenheten + (utfällbart) sekvenser- och klaviaturenhet, alla med 19"-rackfästen.
@@ -68,7 +69,7 @@ private:
     juce::MidiKeyboardComponent keyboard;
     steso::ui::SeqPanel seqPanel;
 
-    juce::Image panelTexture;
+    juce::Image panelTexture, grimeOverlay;
     std::vector<int> presetOrder;   // poster i visningsordning: >= 0 fabriksprogram, < 0 eget preset -(i+1)
     int lastProgramCounter = -1;
     int lastVoices = -1;

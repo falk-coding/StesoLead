@@ -10,14 +10,14 @@ namespace steso::ui
 {
 namespace colours
 {
-    inline const juce::Colour metal        { 0xff1c1b19 };   // panelens grundfärg
-    inline const juce::Colour metalDark    { 0xff121110 };
-    inline const juce::Colour engraveDark  { 0xff070706 };
-    inline const juce::Colour engraveLight { 0xff3b3a36 };
-    inline const juce::Colour text         { 0xffbdbbb4 };   // ljusgrå tryckfärg
-    inline const juce::Colour dimText      { 0xff75736c };
-    inline const juce::Colour bakelite     { 0xff0c0c0b };
-    inline const juce::Colour hairline     { 0xff8d8b84 };   // tunna linjer mellan sektionerna
+    inline const juce::Colour metal        { 0xff141618 };   // panelens grundfärg (kall, nästan svart)
+    inline const juce::Colour metalDark    { 0xff0b0c0e };
+    inline const juce::Colour engraveDark  { 0xff040506 };
+    inline const juce::Colour engraveLight { 0xff33373b };
+    inline const juce::Colour text         { 0xffa9aeb0 };   // kall, blekt tryckfärg
+    inline const juce::Colour dimText      { 0xff5f656a };
+    inline const juce::Colour bakelite     { 0xff08090a };
+    inline const juce::Colour hairline     { 0xff8a9095 };   // tunna linjer mellan sektionerna
     inline const juce::Colour lampRed      { 0xffe2482c };
     inline const juce::Colour lampRedOff   { 0xff3d1e17 };
     inline const juce::Colour lampAmber    { 0xffe4a43c };
@@ -48,6 +48,10 @@ void drawSectionFrame (juce::Graphics&, juce::Rectangle<float> r, const juce::St
 void drawRackEar (juce::Graphics&, juce::Rectangle<float> r);
 // Grynig, repig plåttextur (genereras en gång).
 juce::Image makePanelTexture (int width, int height);
+// Korn, damm och smuts som läggs ÖVER allt (även rattar och text) – ARGB.
+juce::Image makeGrimeOverlay (int width, int height);
+// Punktbelysning: ljuskägla uppifrån, kanterna försvinner i mörker. Ritas över allt.
+void drawSpotLight (juce::Graphics&, juce::Rectangle<float> area, juce::Point<float> spot);
 
 class LookAndFeel : public juce::LookAndFeel_V4
 {
