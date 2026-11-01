@@ -21,7 +21,7 @@ struct BlockParams
 
     // v1.2 "Fat"
     int osc3Wave = 0;
-    float osc3Semi = -12, osc3Fine = -5, mix3 = 0;
+    float osc3Semi = -12, osc3Fine = -5, mix3 = 0, osc3PW = 0.5f;
     int filterType = 0;          // 0 ladder, 1 Polivoks LP, 2 Polivoks BP
     float resonance = 0;         // 0..1 (Polivoks)
     float feedback = 0, warmth = 0;

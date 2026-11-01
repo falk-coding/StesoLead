@@ -695,9 +695,10 @@ StesoLeadEditor::StesoLeadEditor (StesoLeadProcessor& p)
     osc3.add (s, pid::osc3Wave, "Wave", true);
     osc3.add (s, pid::osc3Semi, "Semi");
     osc3.add (s, pid::osc3Fine, "Fine");
+    osc3.add (s, pid::osc3PW, "PW");
     osc3.add (s, pid::osc3SubDiv, "Sub 3 Div");
     osc3.add (s, pid::mixSubh3, "Sub 3");
-    osc3.setGroup (3, juce::String::fromUTF8 ("UNDERTON 3 (SUB 3)"));
+    osc3.setGroup (4, juce::String::fromUTF8 ("UNDERTON 3 (SUB 3)"));
 
     mixer.add (s, pid::mixOsc1, "Osc 1");
     mixer.add (s, pid::mixOsc2, "Osc 2");
@@ -974,11 +975,11 @@ void StesoLeadEditor::resized()
 
     auto row1 = r.removeFromTop (rowH);
     {
-        // Bredd efter antal rattar: OSC 1 (5), OSC 2 (6), OSC 3 (5), Nivåer (5).
+        // Bredd efter antal rattar: OSC 1 (5), OSC 2 (6), OSC 3 (6), Nivåer (5).
         const int w = row1.getWidth();
-        osc1.setBounds (row1.removeFromLeft (w * 5 / 21));
-        osc2.setBounds (row1.removeFromLeft (w * 6 / 21));
-        osc3.setBounds (row1.removeFromLeft (w * 5 / 21));
+        osc1.setBounds (row1.removeFromLeft (w * 5 / 22));
+        osc2.setBounds (row1.removeFromLeft (w * 6 / 22));
+        osc3.setBounds (row1.removeFromLeft (w * 6 / 22));
         mixer.setBounds (row1);
     }
 

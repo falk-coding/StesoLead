@@ -207,6 +207,8 @@ juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout()
     subh->addChild (std::make_unique<APF> (id2 (pid::mixSubh2), "Mix Subharmonic 2", Range (0.0f, 1.0f), 0.0f, percentAttr()));
     subh->addChild (std::make_unique<API> (id2 (pid::osc3SubDiv), "Osc3 Subharmonic Div", 1, 16, 2));
     subh->addChild (std::make_unique<APF> (id2 (pid::mixSubh3), "Mix Subharmonic 3", Range (0.0f, 1.0f), 0.0f, percentAttr()));
+    // v1.8: pulsbredd även på OSC 3. 50 % = exakt som före v1.8.
+    subh->addChild (std::make_unique<APF> (id2 (pid::osc3PW), "Osc3 PW", Range (0.05f, 0.95f), 0.5f, percentAttr()));
 
     layout.add (std::move (osc1), std::move (osc2), std::move (mix), std::move (filter), std::move (fenv),
                 std::move (aenv), std::move (lfo), std::move (voice), std::move (fx), std::move (seqGroup), std::move (fat),
@@ -247,7 +249,7 @@ void ParamPointers::bind (juce::AudioProcessorValueTreeState& s)
     polyOn = p (pid::polyOn); polyBars = p (pid::polyBars);
     osc1SubDiv = p (pid::osc1SubDiv); osc2SubDiv = p (pid::osc2SubDiv);
     mixSubh1 = p (pid::mixSubh1); mixSubh2 = p (pid::mixSubh2);
-    osc3SubDiv = p (pid::osc3SubDiv); mixSubh3 = p (pid::mixSubh3);
+    osc3SubDiv = p (pid::osc3SubDiv); mixSubh3 = p (pid::mixSubh3); osc3PW = p (pid::osc3PW);
     for (int l = 0; l < 4; ++l)
     {
         auto& L = polyLane[(size_t) l];

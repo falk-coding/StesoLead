@@ -61,7 +61,7 @@ Klart: motor, Fat-funktioner, sekvenser med MIDI-export/markörer, mörkt slitet
 rack-layout med fällbar stegsekvenserare/klaviatur, 149 presets, egna förinställningar, namnbyte till Bakelit,
 Polyrytm-läge (v1.7: 4 spår Bar/Div, euklid, tonhöjdssteg, ringvisning; parametern `polyOn` går före `seqMode`).
 Hans har provlyssnat några presets – "låter VÄLDIGT bra". Undertoner (v1.7/1.8): `osc1SubDiv`/`osc2SubDiv`/`osc3SubDiv` ÷1–16 + nivåer `mixSubh1`/`mixSubh2`/`mixSubh3` (0 = av),
-samma vågform som oscillatorn; rattarna ligger inramade i respektive OSC-sektion (Hans krav: tydligt vilken sub hör till vilken osc).
+samma vågform och PW som oscillatorn (OSC 3 har PW sedan v1.8, `osc3PW`); rattarna ligger inramade i respektive OSC-sektion (Hans krav: tydligt vilken sub hör till vilken osc).
 Skin: mörkret ligger i bakgrunden (paint), bara svagt ljuslager över kontrollerna – Hans krav: mörkt men allt läsbart.
 Idé till senare: låta Polyrytm-spåren styra undertonernas delare (som originalets sekvenser gör).
 

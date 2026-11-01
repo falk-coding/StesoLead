@@ -77,7 +77,7 @@ Ny release: **Actions → Build → Run workflow** med `release_tag` (t.ex. `v1.
 
 ## Undertoner / subharmoniska oscillatorer (v1.7)
 - Varje oscillator har sin egen undertone (v1.8: även OSC 3), inramad i oscillatorns sektion:
-  **Sub N Div** (÷1–16) och nivån **Sub N** (0 = av). Samma vågform som oscillatorn; följer tonhöjd, drift och glid exakt.
+  **Sub N Div** (÷1–16) och nivån **Sub N** (0 = av). Samma vågform och pulsbredd (PW) som oscillatorn; följer tonhöjd, drift och glid exakt. OSC 3 har PW sedan v1.8.
 - Mixerns gamla suboscillator (en oktav ner) heter nu **Sub Oct** för att inte förväxlas.
 - Kombinera med Polyrytm i Div-läge för rytmiska undertonsmönster. 4 fabrikspresets i kategorin *Subharmonic*.
 

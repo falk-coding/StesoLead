@@ -146,6 +146,7 @@ void Voice::render (float* left2x, float* right2x, int numSamples, const BlockPa
         const float pwMod = l * bp.lfoPW * 0.45f;
         const float pw1 = std::clamp (bp.osc1PW + pwMod, 0.05f, 0.95f);
         const float pw2 = std::clamp (bp.osc2PW + pwMod, 0.05f, 0.95f);
+        const float pw3 = std::clamp (bp.osc3PW + pwMod, 0.05f, 0.95f);
 
         const float fe = filterEnv.process();
         const float ae = ampEnv.process();
@@ -171,7 +172,7 @@ void Voice::render (float* left2x, float* right2x, int numSamples, const BlockPa
                 // Osc 2 får stackarna i omvänd ordning -> mindre fasning mellan oscillatorerna.
                 s2 += osc2[(size_t) u].process (bp.osc2Wave, std::min (dt2 * bp.uniRatios[(size_t) (stacks - 1 - u)], 0.45f), pw2);
                 if (bp.mix3 > 0.0f)
-                    s3 += osc3[(size_t) u].process (bp.osc3Wave, std::min (dt3 * r, 0.45f), 0.5f);
+                    s3 += osc3[(size_t) u].process (bp.osc3Wave, std::min (dt3 * r, 0.45f), pw3);
             }
             s1 *= stackNorm;
             s2 *= stackNorm;
@@ -183,11 +184,11 @@ void Voice::render (float* left2x, float* right2x, int numSamples, const BlockPa
             // Undertoner: delad frekvens, följer oscillatorns tonhöjd, drift och glid exakt.
             float subh = 0.0f;
             if (bp.mixSubh1 > 0.0f)
-                subh += subh1.process (bp.osc1Wave, dt1 / (float) bp.subDiv1, 0.5f) * bp.mixSubh1;
+                subh += subh1.process (bp.osc1Wave, dt1 / (float) bp.subDiv1, pw1) * bp.mixSubh1;
             if (bp.mixSubh2 > 0.0f)
-                subh += subh2.process (bp.osc2Wave, dt2 / (float) bp.subDiv2, 0.5f) * bp.mixSubh2;
+                subh += subh2.process (bp.osc2Wave, dt2 / (float) bp.subDiv2, pw2) * bp.mixSubh2;
             if (bp.mixSubh3 > 0.0f)
-                subh += subh3.process (bp.osc3Wave, dt3 / (float) bp.subDiv3, 0.5f) * bp.mixSubh3;
+                subh += subh3.process (bp.osc3Wave, dt3 / (float) bp.subDiv3, pw3) * bp.mixSubh3;
 
             const float mixed = (s1 * bp.mix1 + s2 * bp.mix2 + s3 * bp.mix3 + subOsc * bp.mixSub + subh
                                  + noise * bp.mixNoise * 0.7f) * 0.5f;
@@ -268,6 +269,7 @@ void SynthEngine::updateBlockParams (const ParamPointers& p)
     bp.osc2Semi = p.osc2Semi->load();
     bp.osc2Fine = p.osc2Fine->load();
     bp.osc2PW = p.osc2PW->load();
+    bp.osc3PW = p.osc3PW->load();
     bp.mix1 = p.mixOsc1->load();
     bp.mix2 = p.mixOsc2->load();
     bp.mixSub = p.mixSub->load();
