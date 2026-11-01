@@ -68,7 +68,8 @@ jobs:
 
   macos:
     name: macOS – VST3 och AU
-    runs-on: macos-15
+    # macos-15 fick inga runners (nov 2026) – macos-14 bygger samma universal-binär.
+    runs-on: macos-14
     steps:
       - uses: actions/checkout@v4
 
