@@ -462,28 +462,15 @@ StesoLeadEditor::StesoLeadEditor (StesoLeadProcessor& p)
                                                              &lfo, &voice, &fx, &output })
         content.addAndMakeVisible (c);
 
-    // Presetväljare grupperad per kategori (i den ordning kategorin först förekommer).
-    // ID = programnummer + 1, så ordningen i listan påverkar inte sparade projekt.
-    const auto& presets = getFactoryPresets();
-    juce::StringArray categories;
-    for (const auto& pr : presets)
-        categories.addIfNotAlreadyThere (pr.category);
-    for (const auto& category : categories)
-    {
-        presetBox.addSectionHeading (category);
-        for (size_t i = 0; i < presets.size(); ++i)
-            if (presets[i].category == category)
-            {
-                presetBox.addItem (presets[i].name, (int) i + 1);
-                presetOrder.push_back ((int) i);
-            }
-    }
+    rebuildPresetList();
     presetBox.setTextWhenNothingSelected ("Preset");
     presetBox.onChange = [this]
     {
         const int id = presetBox.getSelectedId();
-        if (id > 0 && id - 1 != processor.getCurrentProgram())
-            processor.setCurrentProgram (id - 1);
+        if (id >= userIdBase)
+            selectEntry (-(id - userIdBase + 1));
+        else if (id > 0)
+            selectEntry (id - 1);
     };
     content.addAndMakeVisible (presetBox);
 
@@ -491,6 +478,14 @@ StesoLeadEditor::StesoLeadEditor (StesoLeadProcessor& p)
     nextButton.onClick = [this] { stepPreset (1); };
     content.addAndMakeVisible (prevButton);
     content.addAndMakeVisible (nextButton);
+
+    saveButton.setTooltip (juce::String::fromUTF8 ("Spara inställningarna som eget preset (save as user preset): ")
+                           + StesoLeadProcessor::getUserPresetFolder().getFullPathName());
+    saveButton.onClick = [this] { savePresetDialog(); };
+    deleteButton.setTooltip (juce::String::fromUTF8 ("Ta bort det valda egna presetet (delete the selected user preset)"));
+    deleteButton.onClick = [this] { deletePresetDialog(); };
+    content.addAndMakeVisible (saveButton);
+    content.addAndMakeVisible (deleteButton);
 
     voicesLabel.setJustificationType (juce::Justification::centredRight);
     voicesLabel.setColour (juce::Label::textColourId, steso::ui::colours::dimText);
@@ -558,7 +553,7 @@ void StesoLeadEditor::paint (juce::Graphics& g)
     auto sub = header.withTrimmedLeft (w + 16.0f).translated (0.0f, 4.0f);
     g.setFont (panelFont (13.0f, false).withExtraKerningFactor (0.12f));
     g.setColour (colours::dimText);
-    g.drawText (juce::String::fromUTF8 ("POLYFON ANALOGSYNT (POLYPHONIC ANALOG SYNTH)  ·  v" STESO_VERSION), sub, juce::Justification::centredLeft);
+    g.drawText (juce::String::fromUTF8 ("ANALOGSYNT (ANALOG SYNTH)  ·  v" STESO_VERSION), sub, juce::Justification::centredLeft);
 }
 
 void StesoLeadEditor::resized()
@@ -570,13 +565,17 @@ void StesoLeadEditor::resized()
 
     auto header = r.removeFromTop (46);
     header.removeFromLeft (420);
-    voicesLabel.setBounds (header.removeFromRight (150).reduced (0, 10));
-    header.removeFromRight (12);
+    voicesLabel.setBounds (header.removeFromRight (130).reduced (0, 10));
+    header.removeFromRight (8);
     nextButton.setBounds (header.removeFromRight (34).reduced (0, 8));
     header.removeFromRight (4);
-    presetBox.setBounds (header.removeFromRight (240).reduced (0, 8));
+    presetBox.setBounds (header.removeFromRight (230).reduced (0, 8));
     header.removeFromRight (4);
     prevButton.setBounds (header.removeFromRight (34).reduced (0, 8));
+    header.removeFromRight (8);
+    deleteButton.setBounds (header.removeFromRight (104).reduced (0, 8));
+    header.removeFromRight (4);
+    saveButton.setBounds (header.removeFromRight (90).reduced (0, 8));
 
     keyboard.setBounds (r.removeFromBottom (62).reduced (3, 4));
     r.removeFromBottom (2);
@@ -626,19 +625,179 @@ void StesoLeadEditor::timerCallback()
     }
 }
 
+void StesoLeadEditor::rebuildPresetList()
+{
+    presetBox.clear (juce::dontSendNotification);
+    presetOrder.clear();
+
+    // Egna presets överst.
+    userFiles = StesoLeadProcessor::getUserPresetFiles();
+    if (! userFiles.isEmpty())
+    {
+        presetBox.addSectionHeading ("Egna (User)");
+        for (int i = 0; i < userFiles.size(); ++i)
+        {
+            presetBox.addItem (userFiles[i].getFileNameWithoutExtension(), userIdBase + i);
+            presetOrder.push_back (-(i + 1));
+        }
+    }
+
+    // Fabrikspresets grupperade per kategori (i den ordning kategorin först förekommer).
+    // ID = programnummer + 1, så ordningen i listan påverkar inte sparade projekt.
+    const auto& presets = steso::getFactoryPresets();
+    juce::StringArray categories;
+    for (const auto& pr : presets)
+        categories.addIfNotAlreadyThere (pr.category);
+    for (const auto& category : categories)
+    {
+        presetBox.addSectionHeading (category);
+        for (size_t i = 0; i < presets.size(); ++i)
+            if (presets[i].category == category)
+            {
+                presetBox.addItem (presets[i].name, (int) i + 1);
+                presetOrder.push_back ((int) i);
+            }
+    }
+}
+
+int StesoLeadEditor::currentUserIndex() const
+{
+    const auto name = processor.getUserPresetName();
+    if (name.isEmpty())
+        return -1;
+    const auto legal = juce::File::createLegalFileName (name);
+    for (int i = 0; i < userFiles.size(); ++i)
+        if (userFiles[i].getFileNameWithoutExtension() == legal)
+            return i;
+    return -1;
+}
+
+void StesoLeadEditor::selectEntry (int entry)
+{
+    if (entry >= 0)
+    {
+        if (entry != processor.getCurrentProgram() || processor.getUserPresetName().isNotEmpty())
+            processor.setCurrentProgram (entry);
+    }
+    else
+    {
+        const int index = -entry - 1;
+        if (juce::isPositiveAndBelow (index, userFiles.size()))
+            processor.loadUserPreset (userFiles[index]);
+    }
+    refreshPresetBox();
+}
+
 void StesoLeadEditor::refreshPresetBox()
 {
-    presetBox.setSelectedId (processor.getCurrentProgram() + 1, juce::dontSendNotification);
+    const int userIndex = currentUserIndex();
+    if (userIndex >= 0)
+        presetBox.setSelectedId (userIdBase + userIndex, juce::dontSendNotification);
+    else if (processor.getUserPresetName().isNotEmpty())
+        presetBox.setText (processor.getUserPresetName(), juce::dontSendNotification);   // filen finns inte längre
+    else
+        presetBox.setSelectedId (processor.getCurrentProgram() + 1, juce::dontSendNotification);
+
+    deleteButton.setEnabled (userIndex >= 0);
 }
 
 void StesoLeadEditor::stepPreset (int delta)
 {
-    // Bläddra i samma ordning som listan visar (grupperad per kategori).
+    // Bläddra i samma ordning som listan visar (egna först, sedan per kategori).
     const int n = (int) presetOrder.size();
     if (n == 0)
         return;
-    const auto it = std::find (presetOrder.begin(), presetOrder.end(), processor.getCurrentProgram());
+    const int userIndex = currentUserIndex();
+    const int current = userIndex >= 0 ? -(userIndex + 1) : processor.getCurrentProgram();
+    const auto it = std::find (presetOrder.begin(), presetOrder.end(), current);
     const int pos = it == presetOrder.end() ? 0 : (int) (it - presetOrder.begin());
-    processor.setCurrentProgram (presetOrder[(size_t) ((pos + delta + n) % n)]);
-    refreshPresetBox();
+    selectEntry (presetOrder[(size_t) ((pos + delta + n) % n)]);
+}
+
+void StesoLeadEditor::savePresetDialog()
+{
+    const auto folder = StesoLeadProcessor::getUserPresetFolder();
+    auto suggested = processor.getUserPresetName();
+    if (suggested.isEmpty())
+        suggested = processor.getProgramName (processor.getCurrentProgram()) + " 2";
+
+    auto* window = new juce::AlertWindow ("Spara preset (Save preset)",
+                                          juce::String::fromUTF8 ("Namn (name). Sparas i (saved in):\n") + folder.getFullPathName(),
+                                          juce::MessageBoxIconType::NoIcon, this);
+    window->setLookAndFeel (&lnf);
+    window->addTextEditor ("name", suggested);
+    window->addButton ("Spara (Save)", 1, juce::KeyPress (juce::KeyPress::returnKey));
+    window->addButton ("Avbryt (Cancel)", 0, juce::KeyPress (juce::KeyPress::escapeKey));
+
+    juce::Component::SafePointer<StesoLeadEditor> safe (this);
+    window->enterModalState (true, juce::ModalCallbackFunction::create ([safe, window] (int result)
+    {
+        if (result != 1 || safe == nullptr)
+            return;
+
+        const auto name = window->getTextEditorContents ("name").trim();
+        if (name.isEmpty())
+            return;
+
+        auto doSave = [safe, name]
+        {
+            if (safe == nullptr)
+                return;
+            const auto file = safe->processor.saveUserPreset (name);
+            if (file == juce::File())
+            {
+                juce::AlertWindow::showAsync (juce::MessageBoxOptions()
+                                                  .withIconType (juce::MessageBoxIconType::WarningIcon)
+                                                  .withTitle ("Kunde inte spara (Could not save)")
+                                                  .withMessage (StesoLeadProcessor::getUserPresetFolder().getFullPathName())
+                                                  .withButton ("OK"), nullptr);
+                return;
+            }
+            safe->rebuildPresetList();
+            safe->refreshPresetBox();
+        };
+
+        const auto target = StesoLeadProcessor::getUserPresetFolder()
+                                .getChildFile (juce::File::createLegalFileName (name) + StesoLeadProcessor::userPresetExtension);
+        if (target.existsAsFile())
+        {
+            juce::AlertWindow::showAsync (juce::MessageBoxOptions()
+                                              .withIconType (juce::MessageBoxIconType::QuestionIcon)
+                                              .withTitle (juce::String::fromUTF8 ("Skriva över? (Overwrite?)"))
+                                              .withMessage ("\"" + name + juce::String::fromUTF8 ("\" finns redan (already exists)."))
+                                              .withButton (juce::String::fromUTF8 ("Skriv över (Overwrite)"))
+                                              .withButton ("Avbryt (Cancel)"),
+                                          [doSave] (int r) { if (r == 1) doSave(); });
+        }
+        else
+        {
+            doSave();
+        }
+    }), true);
+}
+
+void StesoLeadEditor::deletePresetDialog()
+{
+    const int index = currentUserIndex();
+    if (index < 0)
+        return;
+
+    const auto file = userFiles[index];
+    juce::Component::SafePointer<StesoLeadEditor> safe (this);
+    juce::AlertWindow::showAsync (juce::MessageBoxOptions()
+                                      .withIconType (juce::MessageBoxIconType::QuestionIcon)
+                                      .withTitle (juce::String::fromUTF8 ("Ta bort preset? (Delete preset?)"))
+                                      .withMessage ("\"" + file.getFileNameWithoutExtension() + "\"")
+                                      .withButton (juce::String::fromUTF8 ("Ta bort (Delete)"))
+                                      .withButton ("Avbryt (Cancel)"),
+                                  [safe, file] (int r)
+    {
+        if (r != 1 || safe == nullptr)
+            return;
+        file.moveToTrash();
+        // Ljudet ligger kvar oförändrat, men är inte längre kopplat till en fil.
+        safe->processor.forgetUserPreset();
+        safe->rebuildPresetList();
+        safe->refreshPresetBox();
+    });
 }

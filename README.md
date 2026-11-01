@@ -35,6 +35,14 @@ Ny release: **Actions → Build → Run workflow** med `release_tag` (t.ex. `v1.
 - Nya funktioner är avstängda som standard, så äldre presets och projekt låter som förut.
 - **Skin:** sliten apparat från östblocket – grå plåt med repor, bakelitrattar, signallampor i sekvensern. Sektionsnamn på svenska med engelska inom parentes.
 
+## Egna presets (v1.4)
+- **Spara (Save)** sparar alla rattlägen + sekvensermönstret som eget preset. Samma namn = skriv över (frågar först).
+- **Ta bort (Delete)** flyttar det valda egna presetet till papperskorgen.
+- Egna presets ligger överst i listan under **Egna (User)** och går att bläddra med < >.
+- Filerna (`*.stesolead`, XML) sparas i `Dokument/StesoLead/Presets` – kopiera mappen för att säkerhetskopiera
+  eller dela presets mellan datorer (Mac ↔ Windows fungerar).
+- Projektet i DAW:n kommer ihåg vilket eget preset som var laddat.
+
 ## Sekvenser / arpeggiator (v1.1)
 - **Seq:** stegen spelas relativt tangenten du håller (transponera live). **Arp:** spelar ackordet du håller
   (Up, Down, Up/Down, Random, As Played, 1–4 oktaver). **Latch** håller kvar ackordet när du släpper tangenterna.

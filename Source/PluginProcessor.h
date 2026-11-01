@@ -75,6 +75,20 @@ public:
     void reenableSequencer();
     bool isBypassedByExport() const noexcept { return bypassedByExport.load(); }
 
+    //==============================================================================
+    // Egna presets (filer i Dokument/StesoLead/Presets, filändelse .stesolead)
+    static juce::File getUserPresetFolder();
+    static void setUserPresetFolder (const juce::File& folder);   // för tester
+    static juce::Array<juce::File> getUserPresetFiles();
+    static inline const juce::String userPresetExtension { ".stesolead" };
+
+    // Sparar aktuella inställningar + mönster. Skriver över om namnet finns.
+    juce::File saveUserPreset (const juce::String& name);
+    bool loadUserPreset (const juce::File& file);
+    // Namn på laddat eget preset, tomt om ett fabrikspreset gäller.
+    juce::String getUserPresetName() const { return userPresetName; }
+    void forgetUserPreset() { userPresetName = {}; ++programChangeCounter; }
+
 private:
     void runSequencer (int numSamples, juce::MidiBuffer& engineMidi, juce::MidiBuffer& seqOut);
     void flushSequencer (juce::MidiBuffer& engineMidi, juce::MidiBuffer& seqOut);
@@ -117,6 +131,7 @@ private:
     std::atomic<int> exportCount { 0 };
 
     std::atomic<bool> bypassedByExport { false };
+    juce::String userPresetName;
     int modeBeforeExport = 2;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (StesoLeadProcessor)

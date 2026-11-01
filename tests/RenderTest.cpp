@@ -532,6 +532,54 @@ void testStress()
     check (worstCpu < 0.6, "CPU för hög i värsta fallet");
 }
 
+void testUserPresets()
+{
+    std::cout << "Egna presets:" << std::endl;
+    auto folder = juce::File::getSpecialLocation (juce::File::tempDirectory).getChildFile ("StesoLeadPresetTest");
+    folder.deleteRecursively();
+    StesoLeadProcessor::setUserPresetFolder (folder);
+
+    std::unique_ptr<StesoLeadProcessor> a (dynamic_cast<StesoLeadProcessor*> (createPluginFilter()));
+    a->setCurrentProgram (findPreset (*a, "Fat Ladder Bass"));
+    a->apvts.getParameter (steso::pid::cutoff)->setValueNotifyingHost (0.42f);
+    a->apvts.getParameter (steso::pid::seqLength)->setValueNotifyingHost (0.2f);
+    a->getPattern().pitch[2] = 7;
+    a->getPattern().on[5] = false;
+
+    const auto file = a->saveUserPreset (juce::String::fromUTF8 ("Min Bas/Test: å"));
+    check (file.existsAsFile(), "eget preset sparades inte");
+    check (StesoLeadProcessor::getUserPresetFiles().size() == 1, "fel antal egna presets");
+    check (a->getUserPresetName() == juce::String::fromUTF8 ("Min Bas/Test: å"), "namnet på eget preset följer inte med");
+
+    std::unique_ptr<StesoLeadProcessor> b (dynamic_cast<StesoLeadProcessor*> (createPluginFilter()));
+    check (b->loadUserPreset (file), "eget preset gick inte att ladda");
+    for (auto* p : a->getParameters())
+    {
+        auto* rp = dynamic_cast<juce::RangedAudioParameter*> (p);
+        auto* other = b->apvts.getParameter (rp->getParameterID());
+        check (std::abs (other->getValue() - rp->getValue()) < 1.0e-4f, "eget preset: " + rp->getParameterID() + " skiljer sig");
+    }
+    check (b->getPattern().pitch[2].load() == 7 && ! b->getPattern().on[5].load(), "eget preset: mönstret följer inte med");
+
+    // Namnet överlever spara/ladda av projektet.
+    juce::MemoryBlock state;
+    b->getStateInformation (state);
+    std::unique_ptr<StesoLeadProcessor> c (dynamic_cast<StesoLeadProcessor*> (createPluginFilter()));
+    c->setStateInformation (state.getData(), (int) state.getSize());
+    check (c->getUserPresetName() == juce::String::fromUTF8 ("Min Bas/Test: å"), "namnet på eget preset sparas inte i projektet");
+
+    // Samma namn = skriv över, inte en ny fil. Fabrikspreset nollställer namnet.
+    a->saveUserPreset (juce::String::fromUTF8 ("Min Bas/Test: å"));
+    check (StesoLeadProcessor::getUserPresetFiles().size() == 1, "överskrivning skapade en ny fil");
+    a->setCurrentProgram (0);
+    check (a->getUserPresetName().isEmpty(), "fabrikspreset nollställer inte namnet");
+    check (a->saveUserPreset ("   ") == juce::File(), "tomt namn ska inte sparas");
+
+    folder.deleteRecursively();
+    StesoLeadProcessor::setUserPresetFolder ({});
+    std::cout << "  klart" << std::endl;
+}
+
 void screenshot (const juce::File& file)
 {
     std::unique_ptr<StesoLeadProcessor> proc (dynamic_cast<StesoLeadProcessor*> (createPluginFilter()));
@@ -566,6 +614,7 @@ int main (int argc, char** argv)
     testState();
     testSequencer();
     testStress();
+    testUserPresets();
     if (shot != juce::File())
         screenshot (shot);
 

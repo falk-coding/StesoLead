@@ -404,6 +404,7 @@ void StesoLeadProcessor::setCurrentProgram (int index)
     currentProgram = index;
     steso::applyPreset (apvts, presets[(size_t) index], pattern);
     bypassedByExport = false;
+    userPresetName = {};
     ++programChangeCounter;
 }
 
@@ -418,6 +419,7 @@ void StesoLeadProcessor::getStateInformation (juce::MemoryBlock& destData)
     auto state = apvts.copyState();
     state.setProperty ("program", currentProgram, nullptr);
     state.setProperty ("version", STESO_VERSION, nullptr);
+    state.setProperty ("userPreset", userPresetName, nullptr);
     state.removeChild (state.getChildWithName ("Pattern"), nullptr);
     state.appendChild (pattern.toTree(), nullptr);
     if (auto xml = state.createXml())
@@ -432,6 +434,7 @@ void StesoLeadProcessor::setStateInformation (const void* data, int sizeInBytes)
         {
             auto tree = juce::ValueTree::fromXml (*xml);
             currentProgram = juce::jlimit (0, getNumPrograms() - 1, (int) tree.getProperty ("program", 0));
+            userPresetName = tree.getProperty ("userPreset", juce::String()).toString();
             const auto patternTree = tree.getChildWithName ("Pattern");
             if (patternTree.isValid())
                 pattern.fromTree (patternTree);
@@ -442,6 +445,106 @@ void StesoLeadProcessor::setStateInformation (const void* data, int sizeInBytes)
             ++programChangeCounter;
         }
     }
+}
+
+//==============================================================================
+namespace
+{
+    juce::File& userPresetFolderOverride()
+    {
+        static juce::File folder;
+        return folder;
+    }
+}
+
+juce::File StesoLeadProcessor::getUserPresetFolder()
+{
+    if (userPresetFolderOverride() != juce::File())
+        return userPresetFolderOverride();
+    return juce::File::getSpecialLocation (juce::File::userDocumentsDirectory)
+               .getChildFile ("StesoLead").getChildFile ("Presets");
+}
+
+void StesoLeadProcessor::setUserPresetFolder (const juce::File& folder)
+{
+    userPresetFolderOverride() = folder;
+}
+
+juce::Array<juce::File> StesoLeadProcessor::getUserPresetFiles()
+{
+    auto files = getUserPresetFolder().findChildFiles (juce::File::findFiles, false, "*" + userPresetExtension);
+    std::sort (files.begin(), files.end(), [] (const juce::File& a, const juce::File& b)
+    {
+        return a.getFileNameWithoutExtension().compareNatural (b.getFileNameWithoutExtension()) < 0;
+    });
+    return files;
+}
+
+juce::File StesoLeadProcessor::saveUserPreset (const juce::String& rawName)
+{
+    const auto name = juce::File::createLegalFileName (rawName.trim());
+    if (name.isEmpty())
+        return {};
+
+    auto folder = getUserPresetFolder();
+    if (! folder.createDirectory())
+        return {};
+
+    // Samma format som projektets sparade läge, utan exportinställningar.
+    juce::ValueTree preset ("StesoLeadPreset");
+    preset.setProperty ("name", rawName.trim(), nullptr);
+    preset.setProperty ("version", STESO_VERSION, nullptr);
+    for (auto* p : getParameters())
+    {
+        if (auto* rp = dynamic_cast<juce::RangedAudioParameter*> (p))
+        {
+            juce::ValueTree param ("PARAM");
+            param.setProperty ("id", rp->getParameterID(), nullptr);
+            param.setProperty ("value", rp->convertFrom0to1 (rp->getValue()), nullptr);
+            preset.appendChild (param, nullptr);
+        }
+    }
+    preset.appendChild (pattern.toTree(), nullptr);
+
+    auto file = folder.getChildFile (name + userPresetExtension);
+    auto xml = preset.createXml();
+    if (xml == nullptr || ! xml->writeTo (file))
+        return {};
+
+    userPresetName = rawName.trim();
+    ++programChangeCounter;
+    return file;
+}
+
+bool StesoLeadProcessor::loadUserPreset (const juce::File& file)
+{
+    auto xml = juce::XmlDocument::parse (file);
+    if (xml == nullptr || ! xml->hasTagName ("StesoLeadPreset"))
+        return false;
+
+    const auto preset = juce::ValueTree::fromXml (*xml);
+    for (auto* p : getParameters())
+    {
+        auto* rp = dynamic_cast<juce::RangedAudioParameter*> (p);
+        if (rp == nullptr)
+            continue;
+        // Parametrar som saknas (äldre preset) får sitt standardvärde.
+        const auto param = preset.getChildWithProperty ("id", rp->getParameterID());
+        const float value = param.isValid() ? rp->convertTo0to1 ((float) param.getProperty ("value"))
+                                            : rp->getDefaultValue();
+        rp->setValueNotifyingHost (value);
+    }
+
+    const auto patternTree = preset.getChildWithName ("Pattern");
+    if (patternTree.isValid())
+        pattern.fromTree (patternTree);
+    else
+        pattern.setDefault();
+
+    userPresetName = preset.getProperty ("name", file.getFileNameWithoutExtension()).toString();
+    bypassedByExport = false;
+    ++programChangeCounter;
+    return true;
 }
 
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter()

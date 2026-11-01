@@ -22,6 +22,13 @@ private:
     void timerCallback() override;
     void refreshPresetBox();
     void stepPreset (int delta);
+    void rebuildPresetList();
+    void savePresetDialog();
+    void deletePresetDialog();
+    int currentUserIndex() const;   // index i userFiles för laddat eget preset, -1 = inget
+    void selectEntry (int entry);    // >= 0 fabriksprogram, < 0 eget preset -(index+1)
+
+    static constexpr int userIdBase = 100000;
 
     StesoLeadProcessor& processor;
     steso::ui::LookAndFeel lnf;
@@ -29,6 +36,9 @@ private:
     juce::Component content;
     juce::ComboBox presetBox;
     juce::TextButton prevButton { "<" }, nextButton { ">" };
+    juce::TextButton saveButton { "Spara (Save)" };
+    juce::TextButton deleteButton { juce::String::fromUTF8 ("Ta bort (Delete)") };
+    juce::Array<juce::File> userFiles;
     juce::Label voicesLabel;
 
     steso::ui::Section osc1 { "TONGENERATOR 1|Osc 1", steso::ui::colours::accent };
@@ -47,7 +57,7 @@ private:
     steso::ui::SeqPanel seqPanel;
 
     juce::Image panelTexture;
-    std::vector<int> presetOrder;   // programnummer i den ordning de visas
+    std::vector<int> presetOrder;   // poster i visningsordning: >= 0 fabriksprogram, < 0 eget preset -(i+1)
     int lastProgramCounter = -1;
     int lastVoices = -1;
 
