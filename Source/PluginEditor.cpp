@@ -589,7 +589,7 @@ StesoLeadEditor::StesoLeadEditor (StesoLeadProcessor& p)
     }
     seqToggle.setToggleState (showSeq, juce::dontSendNotification);
     keysToggle.setToggleState (showKeys, juce::dontSendNotification);
-    seqToggle.setTooltip (juce::String::fromUTF8 ("Visa/dölj stegvis sekvensering (show/hide step sequencer). Lampan lyser gult när den spelar."));
+    seqToggle.setTooltip (juce::String::fromUTF8 ("Visa/dölj stegsekvenseraren (show/hide step sequencer). Lampan lyser gult när den spelar."));
     keysToggle.setTooltip (juce::String::fromUTF8 ("Visa/dölj klaviaturen (show/hide keyboard)"));
     seqToggle.onClick = [this] { setPanelsVisible (seqToggle.getToggleState(), showKeys); };
     keysToggle.onClick = [this] { setPanelsVisible (showSeq, keysToggle.getToggleState()); };

@@ -236,7 +236,7 @@ void StepGrid::updatePlayhead()
 DragBox::DragBox (StesoLeadProcessor& p) : processor (p)
 {
     setMouseCursor (juce::MouseCursor::DraggingHandCursor);
-    setTooltip (juce::String::fromUTF8 ("Dra till ett MIDI-spår i din DAW. Den stegvisa sekvenseringen stängs sedan av så att det inte låter dubbelt. (Drag to a MIDI track in your DAW. The sequencer is then switched off to avoid doubled notes.)"));
+    setTooltip (juce::String::fromUTF8 ("Dra till ett MIDI-spår i din DAW. Stegsekvenseraren stängs sedan av så att det inte låter dubbelt. (Drag to a MIDI track in your DAW. The sequencer is then switched off to avoid doubled notes.)"));
 }
 
 void DragBox::paint (juce::Graphics& g)
@@ -357,7 +357,7 @@ SeqPanel::SeqPanel (StesoLeadProcessor& p) : processor (p), grid (p), dragBox (p
     setupLabel (hitsLabel, "Hits");
     setupLabel (rotateLabel, "Rot");
 
-    bypassLabel.setText (juce::String::fromUTF8 ("Sekvensering av – i DAW:en (sequencer off)"), juce::dontSendNotification);
+    bypassLabel.setText (juce::String::fromUTF8 ("Stegsekvenserare av – i DAW:en (sequencer off)"), juce::dontSendNotification);
     bypassLabel.setFont (panelFont (14.0f));
     bypassLabel.setColour (juce::Label::textColourId, colours::lampRed);
     addChildComponent (bypassLabel);
@@ -443,7 +443,7 @@ DragBox::Range SeqPanel::computeRange() const
 
 void SeqPanel::paint (juce::Graphics& g)
 {
-    drawSectionFrame (g, getLocalBounds().toFloat().reduced (3.0f), juce::String::fromUTF8 ("STEGVIS SEKVENSERING|Step sequencer / arp"));
+    drawSectionFrame (g, getLocalBounds().toFloat().reduced (3.0f), juce::String::fromUTF8 ("STEGSEKVENSERARE|Step sequencer / arp"));
 }
 
 void SeqPanel::resized()
