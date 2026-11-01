@@ -666,13 +666,13 @@ void StesoLeadEditor::paint (juce::Graphics& g)
     const auto title = panelFont (32.0f).withExtraKerningFactor (0.16f);
     g.setFont (title);
     g.setColour (colours::text);
-    g.drawText ("STESOLEAD", header, juce::Justification::centredLeft);
+    g.drawText ("BAKELIT", header, juce::Justification::centredLeft);
 
-    const float w = juce::GlyphArrangement::getStringWidth (title, "STESOLEAD");
+    const float w = juce::GlyphArrangement::getStringWidth (title, "BAKELIT");
     auto sub = header.withTrimmedLeft (w + 16.0f).translated (0.0f, 4.0f);
     g.setFont (panelFont (13.0f, false).withExtraKerningFactor (0.12f));
     g.setColour (colours::dimText);
-    g.drawText (juce::String::fromUTF8 ("ANALOGSYNT (ANALOG SYNTH)  ·  v" STESO_VERSION), sub, juce::Justification::centredLeft);
+    g.drawText (juce::String::fromUTF8 ("FALK INSTRUMENTS  ·  v" STESO_VERSION), sub, juce::Justification::centredLeft);
 }
 
 void StesoLeadEditor::resized()

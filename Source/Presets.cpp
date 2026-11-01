@@ -172,7 +172,7 @@ const std::vector<Preset>& getFactoryPresets()
             { keyTrack, 0.4f }, { feedback, 0.35f }, { warmth, 0.45f }, { filterType, LADDER },
             { aSustain, 1.0f }, { aRelease, 0.12f }, { glide, 0.02f }, { drift, 0.35f }, { spread, 0.0f }, { master, -4.0f } } },
 
-        { "Polivoks Growl", "Fat Bass", {
+        { "Steppe Growl", "Fat Bass", {
             { voiceMode, MONO }, { osc2Wave, SQUARE }, { osc2Semi, -12 }, { osc2Fine, 0 }, { mixOsc2, 0.75f },
             { osc3Semi, 0 }, { osc3Fine, 9 }, { mixOsc3, 0.5f },
             { filterType, POLI_LP }, { cutoff, 300 }, { resonance, 0.65f }, { drive, 0.7f }, { filterEnv, 0.6f },
@@ -203,7 +203,7 @@ const std::vector<Preset>& getFactoryPresets()
             { cutoff, 2400 }, { resonance, 0.25f }, { drive, 0.45f }, { filterEnv, 0.35f }, { warmth, 0.4f }, { glide, 0.05f },
             { aSustain, 0.95f }, { aRelease, 0.35f }, { delayMix, 0.3f }, { reverbMix, 0.2f }, { spread, 0.0f } } },
 
-        { "Polivoks Lead", "Fat Lead", {
+        { "Steppe Lead", "Fat Lead", {
             { voiceMode, LEGATO }, { osc2Wave, SQUARE }, { osc2Semi, 12 }, { osc2Fine, 0 }, { mixOsc2, 0.4f },
             { filterType, POLI_LP }, { cutoff, 1300 }, { resonance, 0.6f }, { drive, 0.55f }, { filterEnv, 0.5f },
             { fDecay, 0.6f }, { fSustain, 0.5f }, { glide, 0.08f }, { lfoPitch, 0.3f }, { lfoFade, 0.6f },
@@ -225,7 +225,7 @@ const std::vector<Preset>& getFactoryPresets()
             { aAttack, 0.8f }, { aSustain, 0.9f }, { aRelease, 2.0f }, { ampVel, 0.2f },
             { warmth, 0.3f }, { chorus, CH_II }, { reverbMix, 0.4f }, { spread, 0.8f } } },
 
-        { "Polivoks Nine Seq", "Sequence", {
+        { "Steppe Nine Seq", "Sequence", {
             { voiceMode, LEGATO }, { osc2Wave, SQUARE }, { osc2Semi, -12 }, { osc2Fine, 0 }, { mixOsc2, 0.5f },
             { filterType, POLI_LP }, { cutoff, 380 }, { resonance, 0.75f }, { drive, 0.65f }, { filterEnv, 0.6f },
             { fDecay, 0.18f }, { fSustain, 0.05f }, { filterVel, 0.6f }, { warmth, 0.3f }, { glide, 0.05f },

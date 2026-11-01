@@ -23,7 +23,7 @@ public:
     juce::AudioProcessorEditor* createEditor() override;
     bool hasEditor() const override { return true; }
 
-    const juce::String getName() const override { return "StesoLead"; }
+    const juce::String getName() const override { return "Bakelit"; }
     bool acceptsMidi() const override { return true; }
     bool producesMidi() const override { return true; }
     bool isMidiEffect() const override { return false; }
@@ -76,11 +76,13 @@ public:
     bool isBypassedByExport() const noexcept { return bypassedByExport.load(); }
 
     //==============================================================================
-    // Egna presets (filer i Dokument/StesoLead/Presets, filändelse .stesolead)
+    // Egna förinställningar (filer i Dokument/Falk Instruments/Bakelit/Presets, filändelse .bakelit;
+    // äldre .stesolead-filer läses också)
     static juce::File getUserPresetFolder();
     static void setUserPresetFolder (const juce::File& folder);   // för tester
     static juce::Array<juce::File> getUserPresetFiles();
-    static inline const juce::String userPresetExtension { ".stesolead" };
+    static inline const juce::String userPresetExtension { ".bakelit" };
+    static inline const juce::String legacyPresetExtension { ".stesolead" };
 
     // Sparar aktuella inställningar + mönster. Skriver över om namnet finns.
     juce::File saveUserPreset (const juce::String& name);

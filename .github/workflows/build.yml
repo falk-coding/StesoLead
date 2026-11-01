@@ -50,19 +50,19 @@ jobs:
         run: |
           mkdir -p out
           cd out
-          xvfb-run -a ../build/StesoLeadTests_artefacts/Release/StesoLeadTests --wav-dir ljudprov --screenshot StesoLead.png
+          xvfb-run -a ../build/StesoLeadTests_artefacts/Release/StesoLeadTests --wav-dir ljudprov --screenshot Bakelit.png
 
       - name: pluginval (VST3, strikthet 10)
         run: |
           curl -sSL -o pluginval.zip https://github.com/Tracktion/pluginval/releases/latest/download/pluginval_Linux.zip
           unzip -q pluginval.zip
           xvfb-run -a ./pluginval --strictness-level 10 --validate-in-process --timeout-ms 600000 \
-            --validate build/StesoLead_artefacts/Release/VST3/StesoLead.vst3
+            --validate build/StesoLead_artefacts/Release/VST3/Bakelit.vst3
 
       - name: Ladda upp ljudprov och skärmdump
         uses: actions/upload-artifact@v4
         with:
-          name: StesoLead-ljudprov-och-skarmdump
+          name: Bakelit-ljudprov-och-skarmdump
           path: out/
           retention-days: 14
 
@@ -86,11 +86,11 @@ jobs:
       - name: Signera ad hoc
         run: |
           A=build/StesoLead_artefacts/Release
-          for b in "$A/VST3/StesoLead.vst3" "$A/AU/StesoLead.component"; do
+          for b in "$A/VST3/Bakelit.vst3" "$A/AU/Bakelit.component"; do
             codesign --force --deep --sign - "$b"
             codesign --verify --verbose "$b"
           done
-          lipo -info "$A/VST3/StesoLead.vst3/Contents/MacOS/StesoLead"
+          lipo -info "$A/VST3/Bakelit.vst3/Contents/MacOS/Bakelit"
 
       - name: pluginval (VST3) och auval (AU)
         run: |
@@ -98,9 +98,9 @@ jobs:
           curl -sSL -o pluginval.zip https://github.com/Tracktion/pluginval/releases/latest/download/pluginval_macOS.zip
           unzip -q pluginval.zip
           ./pluginval.app/Contents/MacOS/pluginval --strictness-level 10 --validate-in-process --timeout-ms 600000 \
-            --validate "$A/VST3/StesoLead.vst3"
+            --validate "$A/VST3/Bakelit.vst3"
           mkdir -p ~/Library/Audio/Plug-Ins/Components
-          cp -R "$A/AU/StesoLead.component" ~/Library/Audio/Plug-Ins/Components/
+          cp -R "$A/AU/Bakelit.component" ~/Library/Audio/Plug-Ins/Components/
           killall -9 AudioComponentRegistrar || true
           sleep 3
           auval -v aumu Stsl Falk
@@ -108,18 +108,18 @@ jobs:
       - name: Paketera
         run: |
           A=build/StesoLead_artefacts/Release
-          P=StesoLead-mac
+          P=Bakelit-mac
           mkdir -p "$P"
-          cp -R "$A/VST3/StesoLead.vst3" "$A/AU/StesoLead.component" "$P/"
+          cp -R "$A/VST3/Bakelit.vst3" "$A/AU/Bakelit.component" "$P/"
           cp packaging/mac/Installera.command packaging/mac/INSTALLERA.txt "$P/"
           chmod +x "$P/Installera.command"
-          ditto -c -k --sequesterRsrc --keepParent "$P" StesoLead-mac.zip
+          ditto -c -k --sequesterRsrc --keepParent "$P" Bakelit-mac.zip
 
       - name: Ladda upp
         uses: actions/upload-artifact@v4
         with:
-          name: StesoLead-mac
-          path: StesoLead-mac.zip
+          name: Bakelit-mac
+          path: Bakelit-mac.zip
           retention-days: 30
 
       - name: Release
@@ -127,13 +127,13 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ inputs.release_tag != '' && inputs.release_tag || github.ref_name }}
-          name: StesoLead ${{ inputs.release_tag != '' && inputs.release_tag || github.ref_name }}
-          files: StesoLead-mac.zip
+          name: Bakelit ${{ inputs.release_tag != '' && inputs.release_tag || github.ref_name }}
+          files: Bakelit-mac.zip
           body: |
-            **Mac:** ladda ner **StesoLead-mac.zip**, packa upp och dubbelklicka på **Installera.command**
+            **Mac:** ladda ner **Bakelit-mac.zip**, packa upp och dubbelklicka på **Installera.command**
             (första gången: högerklicka → Öppna). Starta om Reason.
 
-            **Windows:** ladda ner **StesoLead-windows.zip**, packa upp och dubbelklicka på **Installera.bat**
+            **Windows:** ladda ner **Bakelit-windows.zip**, packa upp och dubbelklicka på **Installera.bat**
             (godkänn administratörsfrågan). Starta om din DAW.
 
   windows:
@@ -160,23 +160,23 @@ jobs:
           curl -sSL -o pluginval.zip https://github.com/Tracktion/pluginval/releases/latest/download/pluginval_Windows.zip
           unzip -q pluginval.zip
           ./pluginval.exe --strictness-level 10 --validate-in-process --timeout-ms 600000 \
-            --validate build/StesoLead_artefacts/Release/VST3/StesoLead.vst3
+            --validate build/StesoLead_artefacts/Release/VST3/Bakelit.vst3
 
       - name: Paketera
         shell: pwsh
         run: |
           $A = "build/StesoLead_artefacts/Release"
-          $P = "StesoLead-windows"
+          $P = "Bakelit-windows"
           New-Item -ItemType Directory -Force -Path $P | Out-Null
-          Copy-Item -Recurse "$A/VST3/StesoLead.vst3" "$P/"
+          Copy-Item -Recurse "$A/VST3/Bakelit.vst3" "$P/"
           Copy-Item packaging/windows/INSTALLERA.txt, packaging/windows/Installera.bat "$P/"
-          Compress-Archive -Path $P -DestinationPath StesoLead-windows.zip
+          Compress-Archive -Path $P -DestinationPath Bakelit-windows.zip
 
       - name: Ladda upp
         uses: actions/upload-artifact@v4
         with:
-          name: StesoLead-windows
-          path: StesoLead-windows.zip
+          name: Bakelit-windows
+          path: Bakelit-windows.zip
           retention-days: 30
 
       - name: Release
@@ -184,5 +184,5 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ inputs.release_tag != '' && inputs.release_tag || github.ref_name }}
-          name: StesoLead ${{ inputs.release_tag != '' && inputs.release_tag || github.ref_name }}
-          files: StesoLead-windows.zip
+          name: Bakelit ${{ inputs.release_tag != '' && inputs.release_tag || github.ref_name }}
+          files: Bakelit-windows.zip

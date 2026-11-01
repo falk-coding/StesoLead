@@ -55,7 +55,7 @@ add("Acid Line", "Bass", MONO_BASS, voiceMode=LEG, mixOsc2=0.0, cutoff=300, reso
     fDecay=0.15, fSustain=0.0, drive=0.6, glide=0.06, filterVel=0.6, delayMix=0.15)
 add("Acid Square", "Bass", MONO_BASS, voiceMode=LEG, osc1Wave=SQ, mixOsc2=0.0, cutoff=350, resonance=0.8,
     filterEnv=0.7, fDecay=0.18, fSustain=0.05, drive=0.5, glide=0.05, filterVel=0.6)
-add("Polivoks Stab Bass", "Bass", MONO_BASS, filterType=PLP, cutoff=400, resonance=0.55, filterEnv=0.6,
+add("Steppe Stab Bass", "Bass", MONO_BASS, filterType=PLP, cutoff=400, resonance=0.55, filterEnv=0.6,
     fDecay=0.2, aDecay=0.35, aSustain=0.4, drive=0.6)
 add("Dirty Drive Bass", "Bass", MONO_BASS, drive=0.9, warmth=0.6, cutoff=700, resonance=0.2, filterEnv=0.3,
     feedback=0.5)
@@ -85,7 +85,7 @@ add("Soaring Lead", "Lead", LEAD, osc2Fine=9, mixOsc3=0.4, osc3Semi=12, osc3Fine
     drive=0.4, lfoPitch=0.3, lfoFade=0.8, delayMix=0.3, reverbMix=0.2)
 add("Square Whistle", "Lead", LEAD, osc1Wave=SQ, osc2Wave=SQ, osc2Semi=12, osc2Fine=0, mixOsc2=0.3,
     cutoff=4000, resonance=0.1, filterEnv=0.1, lfoPitch=0.2, lfoFade=0.6)
-add("Polivoks Scream", "Lead", LEAD, filterType=PLP, resonance=0.75, drive=0.7, cutoff=1500, filterEnv=0.4,
+add("Steppe Scream", "Lead", LEAD, filterType=PLP, resonance=0.75, drive=0.7, cutoff=1500, filterEnv=0.4,
     delayMix=0.3)
 add("Bandpass Lead", "Lead", LEAD, filterType=PBP, resonance=0.6, cutoff=1200, filterEnv=0.5, fDecay=0.4)
 add("Fifth Lead", "Lead", LEAD, osc2Semi=7, osc2Fine=0, mixOsc2=0.7, cutoff=2000, resonance=0.3, filterEnv=0.3,
@@ -145,7 +145,7 @@ add("Dark Pad", "Pad", PAD, cutoff=600, resonance=0.2, warmth=0.3)
 add("Sweep Pad", "Pad", PAD, cutoff=400, resonance=0.5, filterEnv=0.6, fAttack=3.0, fDecay=4.0, reverbMix=0.5)
 add("Breathing Pad", "Pad", PAD, lfoFilter=0.3, lfoRate=0.15, cutoff=1000)
 add("PWM Choir", "Pad", PAD, osc1Wave=SQ, osc2Wave=SQ, osc2Fine=5, lfoPW=0.5, lfoRate=0.4, chorus=1, cutoff=1800)
-add("Polivoks Drone", "Pad", PAD, filterType=PLP, resonance=0.6, cutoff=500, drive=0.5, aAttack=2.0,
+add("Steppe Drone", "Pad", PAD, filterType=PLP, resonance=0.6, cutoff=500, drive=0.5, aAttack=2.0,
     lfoFilter=0.2, lfoRate=0.1)
 add("Glass Pad", "Pad", PAD, osc1Wave=TRI, osc2Wave=SIN, osc2Semi=12, osc2Fine=0, reverbMix=0.5, cutoff=4000)
 add("Unison Pad", "Pad", PAD, unison=4, uniDetune=0.45, chorus=2, cutoff=2000)
@@ -163,7 +163,7 @@ add("Bright Brass", "Brass", BRASS, cutoff=1400, filterEnv=0.5)
 add("Unison Brass", "Brass", BRASS, unison=3, uniDetune=0.3, cutoff=800)
 add("Fanfare", "Brass", BRASS, osc2Semi=7, osc2Fine=0, mixOsc2=0.5, cutoff=900)
 add("Soft Horns", "Brass", BRASS, fAttack=0.15, aAttack=0.1, cutoff=500, filterEnv=0.4, reverbMix=0.25)
-add("Polivoks Brass", "Brass", BRASS, filterType=PLP, resonance=0.4, cutoff=600, drive=0.4)
+add("Steppe Brass", "Brass", BRASS, filterType=PLP, resonance=0.4, cutoff=600, drive=0.4)
 add("Sweeping Brass", "Brass", BRASS, fAttack=0.4, fDecay=1.2, filterEnv=0.7, cutoff=400)
 
 # ---------------------------------------------------------------- Pluck (9)
@@ -175,7 +175,7 @@ add("Wood Pluck", "Pluck", PLUCK, osc1Wave=TRI, osc2Wave=SIN, osc2Semi=12, osc2F
     cutoff=1500, filterEnv=0.4)
 add("Harp Pluck", "Pluck", PLUCK, osc1Wave=TRI, osc2Semi=12, mixOsc2=0.3, aDecay=1.2, aRelease=1.0,
     reverbMix=0.35, cutoff=1200)
-add("Polivoks Pluck", "Pluck", PLUCK, filterType=PBP, resonance=0.6, cutoff=700)
+add("Steppe Pluck", "Pluck", PLUCK, filterType=PBP, resonance=0.6, cutoff=700)
 add("Thumb Piano", "Pluck", PLUCK, osc1Wave=SIN, osc2Wave=TRI, osc2Semi=24, osc2Fine=0, mixOsc2=0.3, aDecay=0.7,
     cutoff=3000, filterEnv=0.2, reverbMix=0.2)
 add("Chord Pluck", "Pluck", PLUCK, chorus=2, reverbMix=0.3, unison=2, cutoff=900)
@@ -215,7 +215,7 @@ add("Swing Seq Bass", "Sequence", MONO_BASS, "0! . 0 12 . 0 . 7 0! . 3 . 0 12 . 
     voiceMode=LEG)
 add("Probability Plucks", "Sequence", PLUCK, "0?80 7?40 12?60 0?90 3?50 . 5?70 10?30 0! 7 .",
     seqMode=SEQ, seqRate=R16, seqLength=11, seqAccLen=4, delayMix=0.3)
-add("Polivoks Gallop", "Sequence", MONO_BASS, "0! 0 0 0! 0 0",
+add("Steppe Gallop", "Sequence", MONO_BASS, "0! 0 0 0! 0 0",
     seqMode=SEQ, seqRate=R16, seqLength=6, seqAccLen=3, filterType=PLP, cutoff=350, resonance=0.6,
     filterEnv=0.55, fDecay=0.15, fSustain=0.05, drive=0.6, aDecay=0.3, aSustain=0.5)
 

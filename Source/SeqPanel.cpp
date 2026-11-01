@@ -437,7 +437,7 @@ DragBox::Range SeqPanel::computeRange() const
     const double bars = (r.to - r.from) / barPpq;
     const auto barsText = std::abs (bars - std::round (bars)) < 0.01 ? juce::String (juce::roundToInt (bars)) : juce::String (bars, 2);
     r.label = prefix + juce::String::fromUTF8 ("Takt ") + a + juce::String::fromUTF8 ("–") + b + "  ·  " + barsText + " takter (bars)";
-    r.fileName = "StesoLead Takt (Bars) " + a + "-" + b + ".mid";
+    r.fileName = "Bakelit Takt (Bars) " + a + "-" + b + ".mid";
     return r;
 }
 

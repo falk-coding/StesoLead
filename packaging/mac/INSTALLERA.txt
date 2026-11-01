@@ -1,17 +1,17 @@
-StesoLead – installation på Mac
+Bakelit (Falk Instruments) – installation på Mac
 ================================
 
 Enklast:
 1. Dubbelklicka på "Installera.command".
    Första gången säger macOS att den inte kan öppnas → högerklicka på filen → Öppna → Öppna.
    (Eller: Systeminställningar → Integritet och säkerhet → "Öppna ändå".)
-2. Starta om Reason. Pluginet finns under Instruments → Falk → StesoLead.
+2. Starta om Reason. Pluginet finns under Instruments → Falk Instruments → Bakelit.
 
 Manuellt (om du hellre vill):
-1. Kopiera StesoLead.vst3 till  ~/Library/Audio/Plug-Ins/VST3/
-   Kopiera StesoLead.component till  ~/Library/Audio/Plug-Ins/Components/
+1. Kopiera Bakelit.vst3 till  ~/Library/Audio/Plug-Ins/VST3/
+   Kopiera Bakelit.component till  ~/Library/Audio/Plug-Ins/Components/
 2. Öppna Terminal och kör:
-   xattr -dr com.apple.quarantine ~/Library/Audio/Plug-Ins/VST3/StesoLead.vst3 ~/Library/Audio/Plug-Ins/Components/StesoLead.component
+   xattr -dr com.apple.quarantine ~/Library/Audio/Plug-Ins/VST3/Bakelit.vst3 ~/Library/Audio/Plug-Ins/Components/Bakelit.component
 3. Starta om Reason.
 
 Varför behövs steg 2? Pluginet är inte signerat med ett betalt Apple-utvecklarkonto,
@@ -25,4 +25,4 @@ Tips i pluginet:
 - Mode: Poly (8 röster), Mono (triggar om varje ton), Legato (glider utan omtrigg – bäst för leads).
 - Stegsekvenserare: fäll ut med Sekv. (Seq), välj Mode Seq eller Arp, håll en tangent och tryck play i DAW:en.
   Dra rutan "Dra MIDI till DAW" till ett MIDI-spår för att få mönstret som klipp – sekvensern stängs då av.
-- Egna förinställningar (presets): knappen Spara (Save). Filerna hamnar i Dokument/StesoLead/Presets.
+- Egna förinställningar (presets): knappen Spara (Save). Filerna hamnar i Dokument/Falk Instruments/Bakelit/Presets.

@@ -87,7 +87,7 @@ inline const juce::StringArray waveNames { "Saw", "Square", "Triangle", "Sine" }
 inline const juce::StringArray lfoWaveNames { "Sine", "Triangle", "Saw", "Square", "S&H" };
 inline const juce::StringArray voiceModeNames { "Poly", "Mono", "Legato" };
 inline const juce::StringArray chorusNames { "Off", "I", "II" };
-inline const juce::StringArray filterTypeNames { "Ladder", "Polivoks LP", "Polivoks BP" };
+inline const juce::StringArray filterTypeNames { "Ladder", "Steppe LP", "Steppe BP" };
 
 juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
 

@@ -6,7 +6,7 @@ if(APPLE AND NOT CMAKE_OSX_ARCHITECTURES)
 endif()
 set(CMAKE_OSX_DEPLOYMENT_TARGET "11.0" CACHE STRING "Minsta macOS-version")
 
-project(StesoLead VERSION 1.5.2 LANGUAGES C CXX)
+project(StesoLead VERSION 1.6.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -32,13 +32,15 @@ if(APPLE)
 endif()
 
 juce_add_plugin(StesoLead
-    COMPANY_NAME "Falk"
-    COMPANY_WEBSITE "https://github.com/falk-coding"
-    BUNDLE_ID "se.falk.stesolead"
+    # Synligt namn: Falk Instruments – Bakelit. Tillverkar- och pluginkoden (Falk/Stsl) får ALDRIG ändras:
+    # DAW:ar känner igen pluginet på dem, så sparade projekt fortsätter fungera.
+    COMPANY_NAME "Falk Instruments"
+    COMPANY_WEBSITE "https://falkinstruments.com"
+    BUNDLE_ID "com.falkinstruments.bakelit"
     PLUGIN_MANUFACTURER_CODE Falk
     PLUGIN_CODE Stsl
     FORMATS ${STESO_FORMATS}
-    PRODUCT_NAME "StesoLead"
+    PRODUCT_NAME "Bakelit"
     IS_SYNTH TRUE
     NEEDS_MIDI_INPUT TRUE
     NEEDS_MIDI_OUTPUT TRUE

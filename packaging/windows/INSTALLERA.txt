@@ -1,14 +1,14 @@
-StesoLead – installation på Windows
+Bakelit (Falk Instruments) – installation på Windows
 ===================================
 
 Enklast:
 1. Packa upp hela zip-filen (högerklicka → Extrahera alla).
 2. Dubbelklicka på "Installera.bat" och godkänn frågan om administratörsbehörighet.
    Säger Windows "Windows skyddade datorn" (SmartScreen) → klicka "Mer information" → "Kör ändå".
-3. Starta om din DAW. Pluginet finns under Instruments → Falk → StesoLead.
+3. Starta om din DAW. Pluginet finns under Instruments → Falk Instruments → Bakelit.
 
 Manuellt:
-Kopiera mappen StesoLead.vst3 till  C:\Program Files\Common Files\VST3\
+Kopiera mappen Bakelit.vst3 till  C:\Program Files\Common Files\VST3\
 och starta om din DAW.
 
 Varför varnar Windows? Pluginet är inte signerat med ett betalt kodsigneringscertifikat.
@@ -22,4 +22,4 @@ Tips i pluginet:
 - Mode: Poly (8 röster), Mono (triggar om varje ton), Legato (glider utan omtrigg – bäst för leads).
 - Stegsekvenserare: fäll ut med Sekv. (Seq), välj Mode Seq eller Arp, håll en tangent och tryck play i DAW:en.
   Dra rutan "Dra MIDI till DAW" till ett MIDI-spår för att få mönstret som klipp – sekvensern stängs då av.
-- Egna förinställningar (presets): knappen Spara (Save). Filerna hamnar i Dokument/StesoLead/Presets.
+- Egna förinställningar (presets): knappen Spara (Save). Filerna hamnar i Dokument/Falk Instruments/Bakelit/Presets.

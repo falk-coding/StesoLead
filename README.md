@@ -1,4 +1,7 @@
-# StesoLead
+# Bakelit – Falk Instruments
+
+*Internt kodnamn: StesoLead (repo, klassnamn). Synligt produktnamn: **Bakelit**, tillverkare **Falk Instruments**
+(ett varumärke för ijoli). Tillverkar-/pluginkoden Falk/Stsl får aldrig ändras – då hittar DAW:arna inte gamla projekt.*
 
 Polyfon analog-inspirerad synth som VST3/AU-plugin (macOS och Windows) byggd med [JUCE](https://juce.com).
 
@@ -25,7 +28,7 @@ Ny release: **Actions → Build → Run workflow** med `release_tag` (t.ex. `v1.
 
 ## Fat-motorn (v1.2)
 - **Tre oscillatorer** (som på Minimoog) + sub-oktav + brus. Osc 3 står på -12 halvtoner som standard.
-- **Filtertyp:** *Ladder* (24 dB, Moog-stil), *Polivoks LP* och *Polivoks BP* (12 dB med mättande integratorer
+- **Filtertyp:** *Ladder* (24 dB, Moog-stil), *Steppe LP* och *Steppe BP* (12 dB med mättande integratorer
   – rått, skrikigt resonansläge inspirerat av den ryska Polivoks).
 - **Feedback:** filterutgången tillbaka in i filtret (Moog-loopen) – morr och tjocklek.
 - **Warmth:** asymmetrisk rörliknande mättning efter filtret (jämna övertoner).

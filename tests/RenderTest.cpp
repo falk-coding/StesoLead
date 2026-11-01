@@ -535,7 +535,7 @@ void testStress()
 void testUserPresets()
 {
     std::cout << "Egna presets:" << std::endl;
-    auto folder = juce::File::getSpecialLocation (juce::File::tempDirectory).getChildFile ("StesoLeadPresetTest");
+    auto folder = juce::File::getSpecialLocation (juce::File::tempDirectory).getChildFile ("BakelitPresetTest");
     folder.deleteRecursively();
     StesoLeadProcessor::setUserPresetFolder (folder);
 
@@ -574,6 +574,15 @@ void testUserPresets()
     a->setCurrentProgram (0);
     check (a->getUserPresetName().isEmpty(), "fabrikspreset nollställer inte namnet");
     check (a->saveUserPreset ("   ") == juce::File(), "tomt namn ska inte sparas");
+
+    // Äldre förinställningar från när pluginet hette StesoLead (.stesolead) ska listas och kunna laddas.
+    {
+        auto legacy = folder.getChildFile ("Gammal" + StesoLeadProcessor::legacyPresetExtension);
+        auto xmlText = file.loadFileAsString().replace ("BakelitPreset", "StesoLeadPreset");
+        legacy.replaceWithText (xmlText);
+        check (StesoLeadProcessor::getUserPresetFiles().contains (legacy), "gamla .stesolead-filer listas inte");
+        check (b->loadUserPreset (legacy), "gamla .stesolead-filer går inte att ladda");
+    }
 
     folder.deleteRecursively();
     StesoLeadProcessor::setUserPresetFolder ({});

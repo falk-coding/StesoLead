@@ -109,7 +109,7 @@ juce::File StesoLeadProcessor::writeMidiExport (double fromPpq, double toPpq, co
     const auto midiFile = steso::seq::renderMidiFile (pattern, settings, getExportChord(), fromPpq, toPpq,
                                                       host.bpm, host.timeSigNum, host.timeSigDen);
 
-    auto dir = juce::File::getSpecialLocation (juce::File::tempDirectory).getChildFile ("StesoLead");
+    auto dir = juce::File::getSpecialLocation (juce::File::tempDirectory).getChildFile ("Bakelit");
     dir.createDirectory();
     auto file = dir.getChildFile (juce::File::createLegalFileName (fileName));
     file.deleteFile();
@@ -461,8 +461,14 @@ juce::File StesoLeadProcessor::getUserPresetFolder()
 {
     if (userPresetFolderOverride() != juce::File())
         return userPresetFolderOverride();
-    return juce::File::getSpecialLocation (juce::File::userDocumentsDirectory)
-               .getChildFile ("StesoLead").getChildFile ("Presets");
+    const auto docs = juce::File::getSpecialLocation (juce::File::userDocumentsDirectory);
+    auto folder = docs.getChildFile ("Falk Instruments").getChildFile ("Bakelit").getChildFile ("Presets");
+
+    // Flytta med egna förinställningar från tiden då pluginet hette StesoLead (görs en gång).
+    const auto legacy = docs.getChildFile ("StesoLead").getChildFile ("Presets");
+    if (! folder.isDirectory() && legacy.isDirectory())
+        legacy.copyDirectoryTo (folder);
+    return folder;
 }
 
 void StesoLeadProcessor::setUserPresetFolder (const juce::File& folder)
@@ -472,7 +478,8 @@ void StesoLeadProcessor::setUserPresetFolder (const juce::File& folder)
 
 juce::Array<juce::File> StesoLeadProcessor::getUserPresetFiles()
 {
-    auto files = getUserPresetFolder().findChildFiles (juce::File::findFiles, false, "*" + userPresetExtension);
+    auto files = getUserPresetFolder().findChildFiles (juce::File::findFiles, false,
+                                                       "*" + userPresetExtension + ";*" + legacyPresetExtension);
     std::sort (files.begin(), files.end(), [] (const juce::File& a, const juce::File& b)
     {
         return a.getFileNameWithoutExtension().compareNatural (b.getFileNameWithoutExtension()) < 0;
@@ -491,7 +498,7 @@ juce::File StesoLeadProcessor::saveUserPreset (const juce::String& rawName)
         return {};
 
     // Samma format som projektets sparade läge, utan exportinställningar.
-    juce::ValueTree preset ("StesoLeadPreset");
+    juce::ValueTree preset ("BakelitPreset");
     preset.setProperty ("name", rawName.trim(), nullptr);
     preset.setProperty ("version", STESO_VERSION, nullptr);
     for (auto* p : getParameters())
@@ -507,6 +514,7 @@ juce::File StesoLeadProcessor::saveUserPreset (const juce::String& rawName)
     preset.appendChild (pattern.toTree(), nullptr);
 
     auto file = folder.getChildFile (name + userPresetExtension);
+    folder.getChildFile (name + legacyPresetExtension).deleteFile();
     auto xml = preset.createXml();
     if (xml == nullptr || ! xml->writeTo (file))
         return {};
@@ -519,7 +527,7 @@ juce::File StesoLeadProcessor::saveUserPreset (const juce::String& rawName)
 bool StesoLeadProcessor::loadUserPreset (const juce::File& file)
 {
     auto xml = juce::XmlDocument::parse (file);
-    if (xml == nullptr || ! xml->hasTagName ("StesoLeadPreset"))
+    if (xml == nullptr || ! (xml->hasTagName ("BakelitPreset") || xml->hasTagName ("StesoLeadPreset")))
         return false;
 
     const auto preset = juce::ValueTree::fromXml (*xml);
