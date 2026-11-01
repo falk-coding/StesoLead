@@ -428,7 +428,8 @@ void testSequencer()
     juce::String why;
     const auto fileAll = proc->writeMidiExport (0.0, 32.0, "test-alla.mid");
     check (fileAll.existsAsFile(), "MIDI-exporten skapade ingen fil");
-    check (sameNotes (live, readMidiFile (fileAll, 0.0), why), "export takt 1-9 skiljer sig från uppspelningen: " + why);
+    const bool sameAll = sameNotes (live, readMidiFile (fileAll, 0.0), why);
+    check (sameAll, "export takt 1-9 skiljer sig från uppspelningen: " + why);
 
     // Export mitt i låten (takt 5-9) ska matcha samma del av uppspelningen.
     std::vector<SeqNote> liveMid;
@@ -436,7 +437,8 @@ void testSequencer()
         if (n.ppq >= 16.0 - 1.0e-6 && n.ppq < 32.0)
             liveMid.push_back (n);
     const auto fileMid = proc->writeMidiExport (16.0, 32.0, "test-mitt.mid");
-    check (sameNotes (liveMid, readMidiFile (fileMid, 16.0), why), "export takt 5-9 skiljer sig: " + why);
+    const bool sameMid = sameNotes (liveMid, readMidiFile (fileMid, 16.0), why);
+    check (sameMid, "export takt 5-9 skiljer sig: " + why);
 
     // Locators från DAW:en läses av.
     const auto host = proc->getHostInfo();
@@ -490,6 +492,151 @@ void testSequencer()
     check (hits == 5, "euklid 5/8 ger " + juce::String (hits) + " träffar");
 
     std::cout << "  " << live.size() << " toner i 8 takter, export = uppspelning" << std::endl;
+}
+
+void testPolyrhythm()
+{
+    std::cout << "Polyrytm:" << std::endl;
+    using namespace steso::seq;
+
+    // 1. Ren motor: 4 mot 3 i 4/4, en takt. Slag på 0,1,2,3 (grundton) och 0,4/3,8/3 (+7), accent där de möts.
+    {
+        Pattern pat;
+        Settings s;
+        s.mode = Mode::poly;
+        s.lanes[0] = { true, 0, 4, 16, 0, 1 };
+        s.lanes[1] = { true, 0, 3, 16, 7, 1 };
+        Chord c;
+        c.count = 1;
+        c.notes[0] = 60;
+        std::vector<NoteEvent> ev;
+        generate (pat, s, c, 0.0, 4.0, ev);
+        check (ev.size() == 7, "4 mot 3 ger " + juce::String ((int) ev.size()) + " slag i stället för 7");
+        int accents = 0, fifths = 0;
+        bool sorted = true;
+        for (size_t i = 0; i < ev.size(); ++i)
+        {
+            accents += ev[i].velocity > 0.99f ? 1 : 0;
+            fifths += ev[i].note == 67 ? 1 : 0;
+            sorted = sorted && (i == 0 || ev[i - 1].ppqOn <= ev[i].ppqOn);
+        }
+        check (accents == 2, "accent där rytmerna möts: " + juce::String (accents) + " (väntat 2: båda tonerna på slag 1)");
+        check (fifths == 3, "spår 2 (+7) spelar " + juce::String (fifths) + " gånger, väntat 3");
+        check (sorted, "Polyrytm-händelserna är inte i tidsordning");
+        bool third = false;
+        for (const auto& e : ev)
+            third = third || (e.note == 67 && std::abs (e.ppqOn - 4.0 / 3.0) < 1.0e-9);
+        check (third, "spår 2 slår inte på 4/3 kvartsnot");
+
+        // Samma ton från två spår på samma tid spelas en gång.
+        s.lanes[1].pitch = 0;
+        ev.clear();
+        generate (pat, s, c, 0.0, 4.0, ev);
+        check (ev.size() == 6, "dubbla toner slås inte ihop (" + juce::String ((int) ev.size()) + ")");
+
+        // Euklid: 8 pulser, 3 hits -> 3 slag per takt. Tonhöjdssteg går ett steg per spelat slag.
+        s.lanes[0] = { true, 0, 8, 3, 0, 3 };
+        s.lanes[1].on = false;
+        pat.lanesFromString ("0 5 12");
+        ev.clear();
+        generate (pat, s, c, 0.0, 8.0, ev);
+        check (ev.size() == 6, "euklid 3 av 8 ger " + juce::String ((int) ev.size()) + " slag på två takter");
+        if (ev.size() == 6)
+            check (ev[0].note == 60 && ev[1].note == 65 && ev[2].note == 72 && ev[3].note == 60,
+                   "tonhöjdsstegen följer inte slagen");
+
+        // Div: var 3:e sextondel.
+        s.lanes[0] = { true, 1, 3, 16, 0, 1 };
+        s.stepPpq = 0.25;
+        ev.clear();
+        generate (pat, s, c, 0.0, 3.0, ev);
+        check (ev.size() == 4 && std::abs (ev[1].ppqOn - 0.75) < 1.0e-9, "Div 3 slår inte var tredje sextondel");
+
+        // Cykel 2 takter: 3 slag fördelade över 8 kvartsnoter.
+        s.lanes[0] = { true, 0, 3, 16, 0, 1 };
+        s.polyBars = 2;
+        ev.clear();
+        generate (pat, s, c, 0.0, 8.0, ev);
+        check (ev.size() == 3 && std::abs (ev[1].ppqOn - 8.0 / 3.0) < 1.0e-9, "cykel på 2 takter stämmer inte");
+
+        // Långt in i låten (takt 1000) ska slagen fortfarande ligga exakt på cykeln.
+        s.polyBars = 1;
+        ev.clear();
+        generate (pat, s, c, 4000.0, 4004.0, ev);
+        check (ev.size() == 3 && std::abs (ev[0].ppqOn - 4000.0) < 1.0e-9, "slagen glider långt in i låten");
+    }
+
+    // 2. Hela pluginet: alla Polyrytm-presets, uppspelning = export, inga hängande toner.
+    std::unique_ptr<StesoLeadProcessor> proc (dynamic_cast<StesoLeadProcessor*> (createPluginFilter()));
+    TestPlayHead ph;
+    auto setParam = [&] (const char* id, float value)
+    {
+        auto* p = proc->apvts.getParameter (id);
+        p->setValueNotifyingHost (p->convertTo0to1 (value));
+    };
+    auto getParam = [&] (const char* id) { return proc->apvts.getRawParameterValue (id)->load(); };
+
+    int polyPresets = 0;
+    for (int i = 0; i < proc->getNumPrograms(); ++i)
+    {
+        if (steso::getFactoryPresets()[(size_t) i].category != "Polyrhythm")
+            continue;
+        ++polyPresets;
+        proc->setCurrentProgram (i);
+        const auto name = proc->getProgramName (i);
+        check (getParam (steso::pid::polyOn) > 0.5f, name + ": Polyrytm är inte på");
+        setParam (steso::pid::seqMidiOut, 1.0f);
+
+        int ons = 0, offs = 0;
+        const auto live = runTransport (*proc, ph, 8.0, { 48 }, ons, offs);
+        check (ons >= 8, name + ": för få toner (" + juce::String (ons) + ")");
+        check (ons == offs, name + ": " + juce::String (ons) + " note on men " + juce::String (offs) + " note off");
+        check (proc->getActiveVoiceCount() == 0, name + ": röster hänger kvar");
+
+        juce::String why;
+        const auto file = proc->writeMidiExport (0.0, 32.0, "test-poly.mid");
+        const bool same = sameNotes (live, readMidiFile (file, 0.0), why);
+        check (same, name + ": export skiljer sig från uppspelningen: " + why);
+    }
+    check (polyPresets == 10, "väntade 10 Polyrytm-presets, hittade " + juce::String (polyPresets));
+
+    // 3. Gamla presets har Polyrytm av.
+    proc->setCurrentProgram (findPreset (*proc, "Odd Seven Acid"));
+    check (getParam (steso::pid::polyOn) < 0.5f, "Polyrytm är på i ett gammalt preset");
+
+    // 4. Tonhöjdsstegen sparas med projektet; äldre sparat läge utan spår ger nollor.
+    proc->setCurrentProgram (findPreset (*proc, "Phase Pluck"));
+    proc->getPattern().lanePitch[2][5] = -7;
+    juce::MemoryBlock state;
+    proc->getStateInformation (state);
+    {
+        std::unique_ptr<StesoLeadProcessor> other (dynamic_cast<StesoLeadProcessor*> (createPluginFilter()));
+        other->setStateInformation (state.getData(), (int) state.getSize());
+        check (other->getPattern().lanePitch[2][5].load() == -7 && other->getPattern().lanePitch[0][1].load() == 3,
+               "Polyrytm-spårens toner sparas inte med projektet");
+        check (other->apvts.getRawParameterValue (steso::pid::polyOn)->load() > 0.5f, "Polyrytm av/på sparas inte");
+
+        auto xml = juce::AudioProcessor::getXmlFromBinary (state.getData(), (int) state.getSize());
+        auto tree = juce::ValueTree::fromXml (*xml);
+        tree.getChildWithName ("Pattern").removeProperty ("lanes", nullptr);
+        juce::MemoryBlock old;
+        juce::AudioProcessor::copyXmlToBinary (*tree.createXml(), old);
+        other->setStateInformation (old.getData(), (int) old.getSize());
+        check (other->getPattern().lanePitch[0][1].load() == 0, "äldre sparat läge utan spår ger inte nollor");
+    }
+
+    // 5. Dra MIDI: Polyrytm stängs av och kommer tillbaka.
+    proc->sequencerExported();
+    check (getParam (steso::pid::polyOn) < 0.5f && proc->isBypassedByExport(), "Polyrytm stängs inte av efter export");
+    {
+        const auto file = proc->writeMidiExport (0.0, 16.0, "test-poly-bypass.mid");
+        check (! readMidiFile (file, 0.0).empty(), "export i bypass blir tom för Polyrytm");
+    }
+    proc->sequencerExported();   // andra dragningen i rad
+    proc->reenableSequencer();
+    check (getParam (steso::pid::polyOn) > 0.5f, "Slå på igen återställer inte Polyrytm");
+
+    std::cout << "  " << polyPresets << " presets, export = uppspelning, sparat läge ok" << std::endl;
 }
 
 void testStress()
@@ -616,6 +763,11 @@ void screenshot (const juce::File& file)
     check ((bool) proc->apvts.state.getProperty ("uiShowSeq", false), "utfällt läge sparas inte");
     snapshot (*editor, file.getSiblingFile (file.getFileNameWithoutExtension() + "-full.png"));
 
+    // Polyrytm-vyn.
+    proc->setCurrentProgram (findPreset (*proc, "Triplet Cascade"));
+    editor->refreshNow();
+    snapshot (*editor, file.getSiblingFile (file.getFileNameWithoutExtension() + "-poly.png"));
+
     // Skalning bevaras när man fäller in igen.
     editor->setSize (editor->getWidth() * 3 / 2, editor->getHeight() * 3 / 2);
     editor->setPanelsVisible (false, true);
@@ -638,10 +790,12 @@ int main (int argc, char** argv)
     if (wavDir != juce::File())
         wavDir.createDirectory();
 
-    testPresets (wavDir);
+    const bool quick = juce::SystemStats::getEnvironmentVariable ("BAKELIT_QUICK", {}).isNotEmpty();
+    if (! quick) testPresets (wavDir);
     testVoiceModesAndPedal();
     testState();
     testSequencer();
+    testPolyrhythm();
     testStress();
     testUserPresets();
     if (shot != juce::File())

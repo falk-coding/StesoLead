@@ -305,7 +305,7 @@ void DragBox::mouseUp (const juce::MouseEvent&)
 }
 
 //==============================================================================
-SeqPanel::SeqPanel (StesoLeadProcessor& p) : processor (p), grid (p), dragBox (p)
+SeqPanel::SeqPanel (StesoLeadProcessor& p) : processor (p), grid (p), poly (p), dragBox (p)
 {
     auto add = [this] (const char* id, const char* label, bool isChoice)
     {
@@ -324,8 +324,31 @@ SeqPanel::SeqPanel (StesoLeadProcessor& p) : processor (p), grid (p), dragBox (p
     add (pid::seqGateLen, "Gate steps", false);
     add (pid::seqLatch, "Latch", true);
     add (pid::seqMidiOut, "MIDI out", true);
+    add (pid::polyOn, "Polyrhythm", true);
+    add (pid::polyBars, "Cycle bars", false);
 
     addAndMakeVisible (grid);
+    addChildComponent (poly);
+
+    // Snabbval för Polyrytm (ersätter Euclid-raden när läget är på).
+    struct Ratio { const char* text; juce::String tip; std::function<void()> apply; };
+    const std::vector<Ratio> ratios {
+        { "4:3", "4 mot 3 (4 against 3)", [this] { poly.applySetup ({ { true, 0, 4, 16, 0 }, { true, 0, 3, 16, 7 } }); } },
+        { "3:2", "3 mot 2 (3 against 2)", [this] { poly.applySetup ({ { true, 0, 3, 16, 0 }, { true, 0, 2, 16, 12 } }); } },
+        { "5:4", "5 mot 4 (5 against 4)", [this] { poly.applySetup ({ { true, 0, 4, 16, 0 }, { true, 0, 5, 16, 7 } }); } },
+        { "7:4", "7 mot 4 (7 against 4)", [this] { poly.applySetup ({ { true, 0, 4, 16, -12 }, { true, 0, 7, 16, 0 } }); } },
+        { "Div", juce::String::fromUTF8 ("Klockdelare ÷2 ÷3 ÷5 ÷7 av Rate (clock dividers)"),
+          [this] { poly.applySetup ({ { true, 1, 2, 16, 0 }, { true, 1, 3, 16, 7 }, { true, 1, 5, 16, -12 }, { true, 1, 7, 16, 12 } }); } },
+        { "Init", juce::String::fromUTF8 ("Återställ alla spår (reset lanes)"), [this] { poly.resetAll(); } },
+    };
+    for (const auto& r : ratios)
+    {
+        auto b = std::make_unique<juce::TextButton> (r.text);
+        b->setTooltip (r.tip);
+        b->onClick = r.apply;
+        addChildComponent (*b);
+        ratioButtons.push_back (std::move (b));
+    }
 
     dragBox.getRange = [this] { return computeRange(); };
     addAndMakeVisible (dragBox);
@@ -385,7 +408,7 @@ SeqPanel::SeqPanel (StesoLeadProcessor& p) : processor (p), grid (p), dragBox (p
     initButton.setTooltip (juce::String::fromUTF8 ("Återställ mönstret (reset pattern)"));
     initButton.onClick = [this]
     {
-        processor.getPattern().setDefault();
+        processor.getPattern().resetSteps();
         markDirty (processor);
         grid.repaint();
     };
@@ -402,6 +425,8 @@ void SeqPanel::bindState()
     if (! st.hasProperty ("exportFrom"))  st.setProperty ("exportFrom", 1, nullptr);
     if (! st.hasProperty ("exportTo"))    st.setProperty ("exportTo", 17, nullptr);
 
+    updatePolyVisibility();
+    poly.repaint();
     rangeMode.getSelectedIdAsValue().referTo (st.getPropertyAsValue ("exportRange", nullptr));
     fromBar.getValueObject().referTo (st.getPropertyAsValue ("exportFrom", nullptr));
     toBar.getValueObject().referTo (st.getPropertyAsValue ("exportTo", nullptr));
@@ -443,7 +468,9 @@ DragBox::Range SeqPanel::computeRange() const
 
 void SeqPanel::paint (juce::Graphics& g)
 {
-    drawSectionFrame (g, getLocalBounds().toFloat().reduced (3.0f), juce::String::fromUTF8 ("STEGSEKVENSERARE|Step sequencer / arp"));
+    drawSectionFrame (g, getLocalBounds().toFloat().reduced (3.0f),
+                      polyVisible ? juce::String::fromUTF8 ("POLYRYTM|Polyrhythm")
+                                  : juce::String::fromUTF8 ("STEGSEKVENSERARE|Step sequencer / arp"));
 }
 
 void SeqPanel::resized()
@@ -460,6 +487,7 @@ void SeqPanel::resized()
         c->setBounds (controlRow.removeFromLeft (w));
     r.removeFromTop (4);
     grid.setBounds (r);
+    poly.setBounds (r);
 
     rangeMode.setBounds (right.removeFromTop (26));
     right.removeFromTop (4);
@@ -470,6 +498,15 @@ void SeqPanel::resized()
     toBar.setBounds (barsRow.removeFromLeft (100).reduced (2, 0));
 
     auto euclidRow = right.removeFromBottom (26);
+    {
+        auto rr = euclidRow;
+        const int bw = (rr.getWidth() - 4 * ((int) ratioButtons.size() - 1)) / (int) ratioButtons.size();
+        for (auto& b : ratioButtons)
+        {
+            b->setBounds (rr.removeFromLeft (bw));
+            rr.removeFromLeft (4);
+        }
+    }
     hitsLabel.setBounds (euclidRow.removeFromLeft (36));
     euclidHits.setBounds (euclidRow.removeFromLeft (80).reduced (2, 0));
     rotateLabel.setBounds (euclidRow.removeFromLeft (36));
@@ -488,9 +525,29 @@ void SeqPanel::resized()
     dragBox.setBounds (right);
 }
 
+void SeqPanel::updatePolyVisibility()
+{
+    const bool on = processor.apvts.getRawParameterValue (pid::polyOn)->load() > 0.5f;
+    if (on == polyVisible && (poly.isVisible() == on))
+        return;
+    polyVisible = on;
+    grid.setVisible (! on);
+    poly.setVisible (on);
+    for (juce::Component* c : { (juce::Component*) &euclidHits, (juce::Component*) &euclidRotate, (juce::Component*) &hitsLabel,
+                                (juce::Component*) &rotateLabel, (juce::Component*) &euclidButton, (juce::Component*) &initButton })
+        c->setVisible (! on);
+    for (auto& b : ratioButtons)
+        b->setVisible (on);
+    repaint();
+}
+
 void SeqPanel::refresh()
 {
-    grid.updatePlayhead();
+    updatePolyVisibility();
+    if (polyVisible)
+        poly.refresh();
+    else
+        grid.updatePlayhead();
 
     const auto s = processor.currentSeqSettings();
     const int laneHash = s.length * 10000 + s.accentLength * 100 + s.gateLength;

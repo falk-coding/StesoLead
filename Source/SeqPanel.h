@@ -2,6 +2,7 @@
 
 #include "UiCommon.h"
 #include "PluginProcessor.h"
+#include "PolyPanel.h"
 
 namespace steso::ui
 {
@@ -70,10 +71,14 @@ public:
 
 private:
     DragBox::Range computeRange() const;
+    void updatePolyVisibility();
 
     StesoLeadProcessor& processor;
     std::vector<std::unique_ptr<Control>> controls;
     StepGrid grid;
+    PolyPanel poly;
+    std::vector<std::unique_ptr<juce::TextButton>> ratioButtons;
+    bool polyVisible = false;
     DragBox dragBox;
 
     juce::ComboBox rangeMode;

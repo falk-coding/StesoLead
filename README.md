@@ -24,7 +24,7 @@ Ny release: **Actions → Build → Run workflow** med `release_tag` (t.ex. `v1.
 - LFO (sine, triangle, saw, square, S&H) med fade in → pitch, filter, PWM
 - Analog drift per röst, stereospridning
 - Chorus (Juno-stil I/II), stereodelay med lågpass i återkopplingen, reverb
-- 135 fabrikspresets i kategorierna Bass, Lead, Keys, Pad, Brass, Pluck, FX och Sequence (nivåkalibrerade), skalbart GUI, inbyggd klaviatur
+- 145 fabrikspresets i kategorierna Bass, Lead, Keys, Pad, Brass, Pluck, FX, Sequence och Polyrhythm (nivåkalibrerade), skalbart GUI, inbyggd klaviatur
 
 ## Fat-motorn (v1.2)
 - **Tre oscillatorer** (som på Minimoog) + sub-oktav + brus. Osc 3 står på -12 halvtoner som standard.
@@ -65,6 +65,16 @@ Ny release: **Actions → Build → Run workflow** med `release_tag` (t.ex. `v1.
   (t.ex. Ableton, Bitwig, Cubase, FL Studio). Logic och Reason stöder det troligen inte – använd dra-och-släpp.
 - Pattern sparas med projektet och med presets. Mode/Rate/Swing m.m. är automatiserbara.
 
+## Polyrytm (v1.7)
+- Slå på **Polyrhythm** i sekvenserpanelen. Det går före Mode (Arp/Seq) och spelar från tangenten du håller.
+- **4 spår.** Varje spår har bara: **Pulses** (slag per cykel), **Hits** (gallra euklidiskt), **Pitch** (±24 mot tangenten)
+  och **Steps** (1–8 tonhöjder som spåret går igenom, ett per slag; dra i rutorna under *Notes*).
+- **Bar** = Pulses slag jämnt fördelade över cykeln (**Cycle bars** 1–4 takter), alltså "4 mot 3" direkt.
+  **Div** = klockdelare: ett slag var N:e steg av Rate.
+- Där spåren slår samtidigt blir det accent. Ringarna visar var slagen ligger och var de möts.
+- Snabbval: **4:3, 3:2, 5:4, 7:4, Div, Init**. Dra MIDI till DAW och MIDI out fungerar som vanligt.
+- Allt är automatiserbart och sparas i projekt/presets. 10 fabrikspresets i kategorin *Polyrhythm*.
+
 **Format:** VST3 (Mac + Windows) och AU (Mac). Fungerar i Reason, Ableton, Cubase, FL Studio, Bitwig,
 Studio One, Reaper, Logic och GarageBand. Pro Tools (AAX) stöds inte – kräver avtal och betald signering hos Avid.
 
@@ -80,13 +90,14 @@ CPU, röstlägen, sustainpedal och att sparat läge laddas exakt. CI kör dessut
 | Fil | Innehåll |
 |---|---|
 | `Source/Parameters.*` | Alla parametrar (ändra aldrig ett ID – sparade projekt tappar värdet) |
-| `Source/Presets.cpp` | Fabrikspresets (de första 35) |
+| `Source/Presets.cpp` | Fabrikspresets 1–35 och Polyrytm 136–145 |
 | `tools/gen_presets.py` | Genererar `Source/PresetBank.inc` (100 presets). Nivåer i `tools/levels.json` |
 | `Source/dsp/DspUtils.h` | Oscillator, envelope, ladderfilter |
 | `Source/dsp/SynthEngine.*` | Röster, röststöld, MIDI, LFO |
 | `Source/dsp/Effects.*` | Chorus, delay, reverb |
 | `Source/seq/Sequencer.*` | Sekvenser/arp, export till MIDI-fil (samma kod för realtid och export) |
 | `Source/SeqPanel.*` | Sekvenser-GUI: stegrutnät, dragruta |
+| `Source/PolyPanel.*` | Polyrytm-GUI: ringar, spår, tonhöjdssteg |
 | `Source/PluginEditor.*` | GUI |
 
 ## Licens

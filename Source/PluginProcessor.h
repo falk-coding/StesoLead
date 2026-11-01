@@ -64,6 +64,8 @@ public:
 
     // Aktuellt globalt stegnummer (för spelhuvudet i GUI:t), -1 = står still.
     int64_t getCurrentStep() const noexcept { return currentStep.load(); }
+    // Aktuell position i PPQ (för Polyrytm-ringarna), < 0 = står still.
+    double getCurrentPpq() const noexcept { return currentPpq.load(); }
 
     // Skapar en MIDI-fil för exportområdet [fromPpq, toPpq). Returnerar en temporär fil.
     juce::File writeMidiExport (double fromPpq, double toPpq, const juce::String& fileName) const;
@@ -96,6 +98,8 @@ private:
     void flushSequencer (juce::MidiBuffer& engineMidi, juce::MidiBuffer& seqOut);
     void notePressed (int note);
     void noteReleased (int note);
+    // 0 = av, 1 = arp, 2 = seq, 3 = Polyrytm (polyOn går före seqMode).
+    int effectiveSeqMode() const noexcept;
 
     steso::ParamPointers params;
     steso::dsp::SynthEngine engine;
@@ -126,6 +130,7 @@ private:
     double hostBpm = 120.0;
 
     std::atomic<int64_t> currentStep { -1 };
+    std::atomic<double> currentPpq { -1.0 };
     std::atomic<bool> hostHasLoop { false };
     std::atomic<double> hostLoopStart { 0 }, hostLoopEnd { 0 }, hostBpmAtomic { 120 };
     std::atomic<int> hostTsNum { 4 }, hostTsDen { 4 };
@@ -135,6 +140,7 @@ private:
     std::atomic<bool> bypassedByExport { false };
     juce::String userPresetName;
     int modeBeforeExport = 2;
+    bool polyBeforeExport = false;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (StesoLeadProcessor)
 };

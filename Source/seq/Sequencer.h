@@ -2,6 +2,7 @@
 
 #include <juce_audio_basics/juce_audio_basics.h>
 #include <juce_data_structures/juce_data_structures.h>
+#include <algorithm>
 #include <array>
 #include <atomic>
 #include <vector>
@@ -13,13 +14,18 @@ namespace steso::seq
 {
 inline constexpr int maxSteps = 32;
 inline constexpr int maxHeld = 16;
+inline constexpr int polyLanes = 4;        // Polyrytm: antal spår
+inline constexpr int polyMaxSteps = 8;     // tonhöjdssteg per spår
+inline constexpr int polyMaxPulses = 16;
 
-enum class Mode { off = 0, arp, seq };
+// off/arp/seq motsvarar parametern seqMode. poly = Polyrytm-läget (egen av/på-parameter, polyOn).
+enum class Mode { off = 0, arp, seq, poly };
 enum class ArpOrder { up = 0, down, upDown, random, asPlayed };
 
 inline const juce::StringArray modeNames { "Off", "Arp", "Seq" };
 inline const juce::StringArray rateNames { "1/4", "1/8", "1/8T", "1/8D", "1/16", "1/16T", "1/16D", "1/32" };
 inline const juce::StringArray arpOrderNames { "Up", "Down", "Up/Down", "Random", "As Played" };
+inline const juce::StringArray polyTypeNames { "Bar", "Div" };   // slag per takt / klockdelare
 
 double rateToPpq (int rateIndex) noexcept;
 
@@ -31,9 +37,14 @@ struct Pattern
     std::array<std::atomic<float>, maxSteps> prob;     // 0..1
     std::array<std::atomic<float>, maxSteps> gate;     // 0.05..1 av steget
 
+    // Polyrytm: tonhöjdssteg per spår (-24..24 halvtoner), går ett steg för varje slag spåret spelar.
+    std::array<std::array<std::atomic<int>, polyMaxSteps>, polyLanes> lanePitch;
+
     Pattern() { setDefault(); }
 
-    void setDefault();
+    void setDefault();          // allt (steg + spår)
+    void resetSteps();          // bara stegsekvenserarens steg
+    void resetLanes();          // bara Polyrytm-spårens tonhöjder
     void copyFrom (const Pattern& other);
 
     // Kompakt textformat för presets: ett token per steg, separerade med mellanslag.
@@ -43,6 +54,10 @@ struct Pattern
     //   "?60"    = 60 % sannolikhet          "_"  = lång gate (95 %)   "'" = kort gate (20 %)
     // Exempel: "0! 0 12 . 3~ 5 . 7?50"
     void fromString (const juce::String& text);
+
+    // Polyrytm-spårens tonhöjder: spår separerade med "|", steg med mellanslag. Ex: "0 7 12 | 0 | -12 -5"
+    // Rör inte stegen. Tomt = alla 0.
+    void lanesFromString (const juce::String& text);
 
     // Euklidisk rytm: sprider `hits` jämnt över `steps` steg, roterat `rotate` steg.
     void applyEuclid (int hits, int steps, int rotate);
@@ -61,7 +76,33 @@ struct Settings
     ArpOrder arpOrder = ArpOrder::up;
     int arpOctaves = 1;
     int length = 16, accentLength = 16, gateLength = 16;
+
+    // Polyrytm (används när mode == poly)
+    struct Lane
+    {
+        bool on = false;
+        int type = 0;          // 0 = Bar (pulses slag per cykel), 1 = Div (ett slag var pulses:e steg av Rate)
+        int pulses = 4;        // 1..16
+        int hits = 16;         // euklidisk gallring: så många av pulses spelas (>= pulses = alla). Bara Bar.
+        int pitch = 0;         // -24..24
+        int steps = 1;         // 1..8 tonhöjdssteg ur Pattern::lanePitch
+    };
+    std::array<Lane, polyLanes> lanes {};
+    int polyBars = 1;          // cykelns längd i takter (Bar-spår)
+    double barPpq = 4.0;       // en takts längd i kvartsnoter (från taktarten)
+
+    double polyCyclePpq() const noexcept { return std::max (1, polyBars) * std::max (0.25, barPpq); }
 };
+
+// Polyrytm: tidpunkt (PPQ) för slag `n` på spår `lane`, och om slaget spelas (euklid).
+// Slagens numrering börjar vid låtens början. Används av motorn och av GUI:ts ringar.
+double polyPulsePpq (const Settings& s, int lane, int64_t n) noexcept;
+double polyIntervalPpq (const Settings& s, int lane) noexcept;
+bool polyPulseIsHit (const Settings& s, int lane, int64_t n) noexcept;
+// Antal spelade slag före slag n (avgör vilket tonhöjdssteg som gäller).
+int64_t polyHitIndex (const Settings& s, int lane, int64_t n) noexcept;
+// Senaste slaget som startat vid eller före ppq.
+int64_t polyPulseAt (const Settings& s, int lane, double ppq) noexcept;
 
 // Ackordet/grundtonen som sekvensern spelar från.
 struct Chord

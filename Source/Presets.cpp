@@ -14,6 +14,31 @@ namespace
     constexpr float R_8T = 2, R_16 = 4;
     constexpr float A_UPDOWN = 2;
     constexpr float LADDER = 0, POLI_LP = 1, POLI_BP = 2;
+    constexpr float ON = 1, DIV = 1;
+
+    // Polyrytm-spår: { på, typ (0 = Bar, 1 = Div), pulser, hits, tonhöjd, steg }
+    struct LaneDef { float on, type, pulses, hits, pitch, steps; };
+
+    std::vector<std::pair<const char*, float>> withPoly (std::vector<std::pair<const char*, float>> values,
+                                                         std::initializer_list<LaneDef> lanes, float bars = 1)
+    {
+        values.push_back ({ pid::polyOn, ON });
+        values.push_back ({ pid::polyBars, bars });
+        int l = 0;
+        for (const auto& d : lanes)
+        {
+            values.push_back ({ pid::polyLaneOn (l), d.on });
+            values.push_back ({ pid::polyLaneType (l), d.type });
+            values.push_back ({ pid::polyLanePulses (l), d.pulses });
+            values.push_back ({ pid::polyLaneHits (l), d.hits });
+            values.push_back ({ pid::polyLanePitch (l), d.pitch });
+            values.push_back ({ pid::polyLaneSteps (l), d.steps });
+            ++l;
+        }
+        for (; l < 4; ++l)
+            values.push_back ({ pid::polyLaneOn (l), 0 });
+        return values;
+    }
 }
 
 const std::vector<Preset>& getFactoryPresets()
@@ -235,6 +260,74 @@ const std::vector<Preset>& getFactoryPresets()
 
         // v1.3: 100 presets till (genereras av tools/gen_presets.py).
         #include "PresetBank.inc"
+
+        // v1.7: Polyrytm (läggs sist – programnumren sparas i projekt).
+        { "Four Against Three", "Polyrhythm", withPoly ({
+            { aDecay, 0.35f }, { aSustain, 0.0f }, { aRelease, 0.3f }, { filterEnv, 0.6f }, { fDecay, 0.25f },
+            { fSustain, 0.0f }, { cutoff, 650 }, { resonance, 0.3f }, { osc2Fine, 7 }, { delayMix, 0.2f },
+            { reverbMix, 0.15f }, { spread, 0.5f }, { master, -4.7f } },
+            { { ON, 0, 4, 16, 0, 1 }, { ON, 0, 3, 16, 7, 1 } }) },
+
+        { "Five Over Four Bells", "Polyrhythm", withPoly ({
+            { osc1Wave, TRI }, { osc2Wave, SINE }, { osc2Semi, 12 }, { osc2Fine, 3 }, { mixOsc2, 0.5f },
+            { aDecay, 0.9f }, { aSustain, 0.0f }, { aRelease, 0.8f }, { cutoff, 3200 }, { filterEnv, 0.3f },
+            { fDecay, 0.4f }, { fSustain, 0.0f }, { reverbMix, 0.35f }, { delayMix, 0.25f }, { spread, 0.6f },
+            { master, -3.8f } },
+            { { ON, 0, 4, 16, 0, 1 }, { ON, 0, 5, 16, 12, 5 } }), {}, "| 0 3 7 10 5" },
+
+        { "Gear Divider Drone", "Polyrhythm", withPoly ({
+            { seqRate, R_16 }, { filterType, POLI_LP }, { cutoff, 450 }, { resonance, 0.65f }, { drive, 0.55f },
+            { filterEnv, 0.5f }, { fDecay, 0.3f }, { fSustain, 0.1f }, { aDecay, 0.6f }, { aSustain, 0.3f },
+            { aRelease, 0.4f }, { mixSub, 0.4f }, { warmth, 0.4f }, { reverbMix, 0.2f }, { spread, 0.5f },
+            { master, -10.0f } },
+            { { ON, DIV, 2, 16, 0, 4 }, { ON, DIV, 3, 16, 7, 3 }, { ON, DIV, 5, 16, -12, 1 }, { ON, DIV, 7, 16, 12, 2 } }),
+          {}, "0 3 0 -2 | 0 5 3 | 0 | 0 -5" },
+
+        { "Seven Over Four Pulse", "Polyrhythm", withPoly ({
+            { osc1Wave, SQUARE }, { osc1PW, 0.3f }, { mixOsc2, 0.3f }, { osc2Semi, 12 }, { aDecay, 0.25f },
+            { aSustain, 0.0f }, { aRelease, 0.2f }, { cutoff, 900 }, { resonance, 0.4f }, { filterEnv, 0.55f },
+            { fDecay, 0.18f }, { fSustain, 0.0f }, { delayMix, 0.25f }, { spread, 0.5f }, { master, -5.5f } },
+            { { ON, 0, 4, 16, -12, 1 }, { ON, 0, 7, 16, 0, 3 } }), {}, "| 0 7 12" },
+
+        { "Euclid Ring Bass", "Polyrhythm", withPoly ({
+            { voiceMode, MONO }, { cutoff, 320 }, { resonance, 0.45f }, { filterEnv, 0.6f }, { fDecay, 0.2f },
+            { fSustain, 0.05f }, { aSustain, 0.8f }, { aRelease, 0.1f }, { drive, 0.5f }, { mixSub, 0.4f },
+            { spread, 0.0f }, { glide, 0.03f }, { master, -2.0f } },
+            { { ON, 0, 16, 5, -12, 4 }, { ON, 0, 3, 16, 0, 1 } }), {}, "0 0 3 -2" },
+
+        { "Triplet Cascade", "Polyrhythm", withPoly ({
+            { osc1Wave, SAW }, { osc2Wave, TRI }, { osc2Semi, 7 }, { mixOsc2, 0.4f }, { aDecay, 0.4f },
+            { aSustain, 0.0f }, { aRelease, 0.5f }, { cutoff, 1400 }, { filterEnv, 0.4f }, { fDecay, 0.3f },
+            { fSustain, 0.0f }, { chorus, CH_I }, { delayMix, 0.3f }, { reverbMix, 0.3f }, { spread, 0.6f },
+            { master, -5.9f } },
+            { { ON, 0, 3, 16, 0, 2 }, { ON, 0, 4, 16, 12, 1 }, { ON, 0, 5, 16, 7, 3 }, { ON, 0, 6, 4, 19, 2 } }, 2),
+          {}, "0 -5 | 0 | 0 3 5 | 0 -2" },
+
+        { "Clockwork Acid", "Polyrhythm", withPoly ({
+            { voiceMode, LEGATO }, { seqRate, R_16 }, { mixOsc2, 0.0f }, { cutoff, 300 }, { resonance, 0.82f },
+            { filterEnv, 0.75f }, { fDecay, 0.16f }, { fSustain, 0.0f }, { drive, 0.6f }, { glide, 0.05f },
+            { filterVel, 0.6f }, { delayMix, 0.15f }, { spread, 0.0f }, { master, -0.5f } },
+            { { ON, DIV, 1, 16, 0, 7 }, { ON, DIV, 3, 16, 12, 1 } }), {}, "0 0 12 3 0 10 7" },
+
+        { "Phase Pluck", "Polyrhythm", withPoly ({
+            { osc1Wave, SQUARE }, { osc2Wave, SAW }, { osc2Fine, 5 }, { aDecay, 0.3f }, { aSustain, 0.0f },
+            { aRelease, 0.3f }, { cutoff, 800 }, { filterEnv, 0.55f }, { fDecay, 0.2f }, { fSustain, 0.0f },
+            { delayMix, 0.3f }, { delayFb, 0.45f }, { reverbMix, 0.2f }, { spread, 0.7f }, { master, -5.3f } },
+            { { ON, 0, 7, 16, 0, 7 }, { ON, 0, 8, 16, 12, 8 } }, 2), {}, "0 3 5 7 10 7 5 | 0 -2 3 5 7 5 3 -2" },
+
+        { "Steppe Gears Lead", "Polyrhythm", withPoly ({
+            { voiceMode, LEGATO }, { filterType, POLI_LP }, { cutoff, 600 }, { resonance, 0.7f }, { drive, 0.65f },
+            { filterEnv, 0.55f }, { fDecay, 0.2f }, { fSustain, 0.15f }, { aSustain, 0.9f }, { aRelease, 0.15f },
+            { glide, 0.06f }, { warmth, 0.3f }, { delayMix, 0.25f }, { spread, 0.0f }, { master, -2.0f } },
+            { { ON, 0, 5, 16, 0, 5 }, { ON, 0, 3, 16, 12, 3 } }), {}, "0 3 7 5 10 | 0 -2 3" },
+
+        { "Slow Orbit Pad", "Polyrhythm", withPoly ({
+            { aAttack, 0.4f }, { aDecay, 1.5f }, { aSustain, 0.4f }, { aRelease, 1.2f }, { fAttack, 0.5f },
+            { fDecay, 1.5f }, { fSustain, 0.4f }, { filterEnv, 0.3f }, { cutoff, 1100 }, { osc2Fine, -9 },
+            { unison, 2 }, { uniDetune, 0.35f }, { chorus, CH_II }, { reverbMix, 0.5f }, { spread, 0.8f },
+            { master, -9.2f } },
+            { { ON, 0, 1, 16, -12, 1 }, { ON, 0, 3, 16, 0, 3 }, { ON, 0, 5, 16, 7, 1 }, { ON, 0, 2, 16, 12, 2 } }, 4),
+          {}, "| 0 3 5 | | 0 -2" },
     };
 
     return presets;
@@ -246,6 +339,7 @@ void applyPreset (juce::AudioProcessorValueTreeState& apvts, const Preset& prese
         pattern.setDefault();
     else
         pattern.fromString (preset.pattern);
+    pattern.lanesFromString (preset.lanes);
 
     for (auto* p : apvts.processor.getParameters())
         if (auto* rp = dynamic_cast<juce::RangedAudioParameter*> (p))

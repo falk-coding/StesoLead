@@ -25,6 +25,8 @@ public:
     // Fäll ut/in sekvenser och klaviatur (sparas i projektet).
     void setPanelsVisible (bool sequencer, bool keyboard);
     int currentBaseHeight() const;
+    // Uppdatera GUI:t direkt i stället för att vänta på timern (tester/skärmdumpar).
+    void refreshNow() { timerCallback(); }
 
 private:
     void timerCallback() override;

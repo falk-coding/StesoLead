@@ -82,6 +82,32 @@ double rateToPpq (int rateIndex) noexcept
 //==============================================================================
 void Pattern::setDefault()
 {
+    resetSteps();
+    resetLanes();
+}
+
+void Pattern::resetLanes()
+{
+    for (auto& lane : lanePitch)
+        for (auto& v : lane)
+            v = 0;
+}
+
+void Pattern::lanesFromString (const juce::String& text)
+{
+    resetLanes();
+    auto lanes = juce::StringArray::fromTokens (text, "|", "");
+    for (int l = 0; l < std::min (lanes.size(), polyLanes); ++l)
+    {
+        auto tokens = juce::StringArray::fromTokens (lanes[l], " ", "");
+        tokens.removeEmptyStrings();
+        for (int i = 0; i < std::min (tokens.size(), polyMaxSteps); ++i)
+            lanePitch[(size_t) l][(size_t) i] = juce::jlimit (-24, 24, tokens[i].getIntValue());
+    }
+}
+
+void Pattern::resetSteps()
+{
     for (int i = 0; i < maxSteps; ++i)
     {
         on[(size_t) i] = true;
@@ -104,11 +130,14 @@ void Pattern::copyFrom (const Pattern& o)
         prob[i] = o.prob[i].load();
         gate[i] = o.gate[i].load();
     }
+    for (size_t l = 0; l < (size_t) polyLanes; ++l)
+        for (size_t i = 0; i < (size_t) polyMaxSteps; ++i)
+            lanePitch[l][i] = o.lanePitch[l][i].load();
 }
 
 void Pattern::fromString (const juce::String& text)
 {
-    setDefault();
+    resetSteps();
     for (auto& a : accent) a = false;
 
     auto tokens = juce::StringArray::fromTokens (text, " ", "");
@@ -171,6 +200,15 @@ juce::ValueTree Pattern::toTree() const
     t.setProperty ("pitch", sPitch.trim(), nullptr);
     t.setProperty ("prob", sProb.trim(), nullptr);
     t.setProperty ("gate", sGate.trim(), nullptr);
+
+    juce::String sLanes;
+    for (size_t l = 0; l < (size_t) polyLanes; ++l)
+    {
+        if (l > 0) sLanes << "| ";
+        for (size_t i = 0; i < (size_t) polyMaxSteps; ++i)
+            sLanes << lanePitch[l][i].load() << ' ';
+    }
+    t.setProperty ("lanes", sLanes.trim(), nullptr);
     return t;
 }
 
@@ -196,6 +234,155 @@ void Pattern::fromTree (const juce::ValueTree& t)
         if (i < probs.size())   prob[idx] = juce::jlimit (0.0f, 1.0f, probs[i].getFloatValue() / 100.0f);
         if (i < gates.size())   gate[idx] = juce::jlimit (0.05f, 1.0f, gates[i].getFloatValue() / 100.0f);
     }
+
+    // Sparat före v1.7 saknar spår -> nollor.
+    lanesFromString (t.getProperty ("lanes").toString());
+}
+
+//==============================================================================
+namespace
+{
+    int64_t floorDiv (int64_t a, int64_t b) noexcept
+    {
+        const auto q = a / b;
+        return (a % b != 0 && ((a < 0) != (b < 0))) ? q - 1 : q;
+    }
+
+    const Settings::Lane& laneOf (const Settings& s, int lane) noexcept
+    {
+        return s.lanes[(size_t) std::clamp (lane, 0, polyLanes - 1)];
+    }
+
+    int lanePulses (const Settings::Lane& l) noexcept { return std::clamp (l.pulses, 1, polyMaxPulses); }
+} // namespace
+
+// Antal spelade slag före slag n (räknas från låtens början) -> vilket tonhöjdssteg som gäller.
+int64_t polyHitIndex (const Settings& s, int lane, int64_t n) noexcept
+{
+    const auto& l = laneOf (s, lane);
+    if (l.type != 0)
+        return n;
+    const int p = lanePulses (l);
+    const int h = std::clamp (l.hits, 1, p);
+    const auto cycle = floorDiv (n, p);
+    const int j = posMod (n, p);
+    int before = 0;
+    for (int k = 0; k < j; ++k)
+        if ((k * h) % p < h)
+            ++before;
+    return cycle * h + before;
+}
+
+int64_t polyPulseAt (const Settings& s, int lane, double ppq) noexcept
+{
+    const double interval = polyIntervalPpq (s, lane);
+    auto n = (int64_t) std::floor (ppq / interval) + 1;
+    while (polyPulsePpq (s, lane, n) > ppq + 1.0e-9)
+        --n;
+    return n;
+}
+
+double polyIntervalPpq (const Settings& s, int lane) noexcept
+{
+    const auto& l = laneOf (s, lane);
+    const int p = lanePulses (l);
+    return l.type == 0 ? s.polyCyclePpq() / p : std::max (1.0 / 64.0, s.stepPpq) * p;
+}
+
+double polyPulsePpq (const Settings& s, int lane, int64_t n) noexcept
+{
+    const auto& l = laneOf (s, lane);
+    if (l.type != 0)
+        return (double) n * polyIntervalPpq (s, lane);
+
+    // Räkna per cykel så att slagen ligger exakt på cykelns början (inga avrundningsfel över tid).
+    const int p = lanePulses (l);
+    const auto cycle = floorDiv (n, p);
+    return (double) cycle * s.polyCyclePpq() + (double) posMod (n, p) * s.polyCyclePpq() / p;
+}
+
+bool polyPulseIsHit (const Settings& s, int lane, int64_t n) noexcept
+{
+    const auto& l = laneOf (s, lane);
+    if (l.type != 0)
+        return true;
+    const int p = lanePulses (l);
+    const int h = std::clamp (l.hits, 1, p);
+    return (posMod (n, p) * h) % p < h;
+}
+
+namespace
+{
+    void generatePoly (const Pattern& pattern, const Settings& s, const Chord& chord,
+                       double fromPpq, double toPpq, std::vector<NoteEvent>& out)
+    {
+        struct Hit { NoteEvent e; int lane; };
+        std::array<Hit, 256> hits;
+        int count = 0;
+        const int root = chord.notes[(size_t) (chord.count - 1)];   // senast nedtryckta = grundton
+
+        for (int lane = 0; lane < polyLanes; ++lane)
+        {
+            const auto& l = s.lanes[(size_t) lane];
+            if (! l.on)
+                continue;
+
+            const double interval = polyIntervalPpq (s, lane);
+            const auto first = (int64_t) std::floor (fromPpq / interval) - 1;
+            const auto last  = (int64_t) std::floor (toPpq / interval) + 1;
+
+            for (int64_t n = first; n <= last && count < (int) hits.size(); ++n)
+            {
+                const double on = polyPulsePpq (s, lane, n);
+                if (on < fromPpq || on >= toPpq || ! polyPulseIsHit (s, lane, n))
+                    continue;
+
+                const int steps = std::clamp (l.steps, 1, polyMaxSteps);
+                const auto stepIdx = (size_t) posMod (polyHitIndex (s, lane, n), steps);
+
+                NoteEvent e;
+                e.step = n;
+                e.ppqOn = on;
+                e.ppqOff = on + std::max (0.02, 0.5 * (double) s.gateScale * interval);
+                e.note = std::clamp (root + l.pitch + pattern.lanePitch[(size_t) lane][stepIdx].load(), 0, 127);
+                e.velocity = 0.78f;
+                hits[(size_t) count++] = { e, lane };
+            }
+        }
+
+        std::sort (hits.begin(), hits.begin() + count, [] (const Hit& a, const Hit& b)
+        {
+            return a.e.ppqOn != b.e.ppqOn ? a.e.ppqOn < b.e.ppqOn : a.lane < b.lane;
+        });
+
+        // Slag från flera spår på samma tid = accent ("där rytmerna möts"). Samma ton på samma tid spelas en gång.
+        constexpr double eps = 1.0e-6;
+        for (int i = 0; i < count;)
+        {
+            int j = i + 1;
+            while (j < count && hits[(size_t) j].e.ppqOn - hits[(size_t) i].e.ppqOn < eps)
+                ++j;
+
+            const bool accent = j - i > 1;
+            for (int k = i; k < j; ++k)
+            {
+                auto e = hits[(size_t) k].e;
+                e.ppqOn = hits[(size_t) i].e.ppqOn;
+                bool duplicate = false;
+                for (int m = i; m < k; ++m)
+                    duplicate = duplicate || hits[(size_t) m].e.note == e.note;
+                if (duplicate)
+                    continue;
+                for (int m = k + 1; m < j; ++m)
+                    if (hits[(size_t) m].e.note == e.note)
+                        e.ppqOff = std::max (e.ppqOff, hits[(size_t) m].e.ppqOff);
+                if (accent)
+                    e.velocity = 1.0f;
+                out.push_back (e);
+            }
+            i = j;
+        }
+    }
 }
 
 //==============================================================================
@@ -204,6 +391,12 @@ void generate (const Pattern& pattern, const Settings& s, const Chord& chord,
 {
     if (s.mode == Mode::off || chord.count <= 0 || s.stepPpq <= 0.0 || toPpq <= fromPpq)
         return;
+
+    if (s.mode == Mode::poly)
+    {
+        generatePoly (pattern, s, chord, fromPpq, toPpq, out);
+        return;
+    }
 
     const int len = std::clamp (s.length, 1, maxSteps);
     const int accLen = std::clamp (s.accentLength, 1, maxSteps);

@@ -29,9 +29,10 @@ cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DJUCE_DIR=/tmp/juce
 cmake --build build
 cd /tmp/out && xvfb-run -a /home/user/StesoLead/build/StesoLeadTests_artefacts/Release/StesoLeadTests --wav-dir wav --screenshot shot.png
 ```
-Testerna: alla presets (44.1/96 kHz: NaN, klipp, tystnad, hängande röster, CPU), röstlägen/pedal, spara/ladda läge
+`BAKELIT_QUICK=1` hoppar över preset-renderingen (snabb körning). Testerna: alla presets (44.1/96 kHz: NaN, klipp, tystnad, hängande röster, CPU), röstlägen/pedal, spara/ladda läge
 (även pluginval-liknande slumpvärden), sekvenser (export = uppspelning, polymetri, arp, bypass), stresstest 40 rundor,
-egna förinställningar (inkl. gamla .stesolead), skärmdumpar kompakt + utfällt (`shot.png`, `shot-full.png`).
+egna förinställningar (inkl. gamla .stesolead), Polyrytm (motor, export = uppspelning, sparat läge, bypass),
+skärmdumpar kompakt + utfällt + Polyrytm (`shot.png`, `shot-full.png`, `shot-poly.png`).
 Att köra nedladdade binärer (t.ex. pluginval) lokalt nekas – pluginval/auval körs i CI.
 
 ## Release
@@ -45,19 +46,21 @@ Commits: författare `Hans Falk <hans.falk@gmail.com>`. Pusha direkt till main (
 | Del | Fil |
 |---|---|
 | Parametrar | `Source/Parameters.*` |
-| Fabrikspresets 1–35 | `Source/Presets.cpp` |
+| Fabrikspresets 1–35, Polyrytm 136–145 | `Source/Presets.cpp` |
 | Presets 36–135 | `tools/gen_presets.py` → `Source/PresetBank.inc` (nivåer i `tools/levels.json`) |
 | Oscillator, envelope, Ladder-/Steppe-filter (`PolivoksFilter`), halvbandsdecimator | `Source/dsp/DspUtils.h` |
 | Röster (3 osc, unison, 2x oversampling, feedback, warmth), MIDI, LFO | `Source/dsp/SynthEngine.*` |
 | Chorus, delay, reverb | `Source/dsp/Effects.*` |
-| Stegsekvenserare/arp, MIDI-export | `Source/seq/Sequencer.*`, GUI `Source/SeqPanel.*` |
+| Stegsekvenserare/arp/Polyrytm, MIDI-export | `Source/seq/Sequencer.*`, GUI `Source/SeqPanel.*`, `Source/PolyPanel.*` |
 | Egna förinställningar, sparat läge, värdinfo | `Source/PluginProcessor.*` |
 | GUI: rack-layout, skin, rubriker | `Source/PluginEditor.*`, `Source/UiCommon.h` |
 | Installation | `packaging/mac`, `packaging/windows` |
 
-## Status (2026-11-01, v1.6.0)
+## Status (2026-11-01, v1.7.0)
 Klart: motor, Fat-funktioner, sekvenser med MIDI-export/markörer, sovjetinspirerat skin med svenska texter,
-rack-layout med fällbar stegsekvenserare/klaviatur, 135 presets, egna förinställningar, namnbyte till Bakelit.
+rack-layout med fällbar stegsekvenserare/klaviatur, 145 presets, egna förinställningar, namnbyte till Bakelit,
+Polyrytm-läge (v1.7: 4 spår Bar/Div, euklid, tonhöjdssteg, ringvisning; parametern `polyOn` går före `seqMode`).
+Hans har provlyssnat några presets – "låter VÄLDIGT bra". Idé till senare: subharmoniska oscillatorer (Sub ÷1–16 per osc).
 
 **Kvar innan försäljning** (i ordning):
 1. Hans lyssnar och testar i Reason (ljud, presets, dra MIDI, fönsterstorlek vid utfällning) – inget är provlyssnat än.

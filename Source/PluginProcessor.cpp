@@ -75,7 +75,28 @@ steso::seq::Settings StesoLeadProcessor::currentSeqSettings() const
     s.length = (int) params.seqLength->load();
     s.accentLength = (int) params.seqAccLen->load();
     s.gateLength = (int) params.seqGateLen->load();
+
+    s.barPpq = hostTsNum.load() * 4.0 / juce::jmax (1, hostTsDen.load());
+    s.polyBars = (int) params.polyBars->load();
+    for (size_t l = 0; l < (size_t) polyLanes; ++l)
+    {
+        const auto& P = params.polyLane[l];
+        auto& L = s.lanes[l];
+        L.on = P.on->load() > 0.5f;
+        L.type = (int) P.type->load();
+        L.pulses = (int) P.pulses->load();
+        L.hits = (int) P.hits->load();
+        L.pitch = (int) P.pitch->load();
+        L.steps = (int) P.steps->load();
+    }
+    if (params.polyOn->load() > 0.5f)
+        s.mode = Mode::poly;
     return s;
+}
+
+int StesoLeadProcessor::effectiveSeqMode() const noexcept
+{
+    return params.polyOn->load() > 0.5f ? 3 : (int) params.seqMode->load();
 }
 
 StesoLeadProcessor::HostInfo StesoLeadProcessor::getHostInfo() const
@@ -103,7 +124,8 @@ juce::File StesoLeadProcessor::writeMidiExport (double fromPpq, double toPpq, co
 {
     auto settings = currentSeqSettings();
     if (settings.mode == steso::seq::Mode::off)
-        settings.mode = (steso::seq::Mode) juce::jlimit (1, 2, modeBeforeExport);
+        settings.mode = polyBeforeExport ? steso::seq::Mode::poly
+                                         : (steso::seq::Mode) juce::jlimit (1, 2, modeBeforeExport);
 
     const auto host = getHostInfo();
     const auto midiFile = steso::seq::renderMidiFile (pattern, settings, getExportChord(), fromPpq, toPpq,
@@ -123,19 +145,35 @@ juce::File StesoLeadProcessor::writeMidiExport (double fromPpq, double toPpq, co
 
 void StesoLeadProcessor::sequencerExported()
 {
-    const int mode = (int) params.seqMode->load();
-    if (mode != 0)
-        modeBeforeExport = mode;
+    if (effectiveSeqMode() == 0)
+    {
+        bypassedByExport = true;   // redan av (t.ex. andra dragningen i rad) – behåll det vi minns
+        return;
+    }
 
-    if (auto* p = apvts.getParameter (steso::pid::seqMode))
-        p->setValueNotifyingHost (p->convertTo0to1 (0.0f));
+    const int mode = (int) params.seqMode->load();
+    modeBeforeExport = mode;
+    polyBeforeExport = params.polyOn->load() > 0.5f;
+
+    for (auto* id : { steso::pid::seqMode, steso::pid::polyOn })
+        if (auto* p = apvts.getParameter (id))
+            p->setValueNotifyingHost (p->convertTo0to1 (0.0f));
     bypassedByExport = true;
 }
 
 void StesoLeadProcessor::reenableSequencer()
 {
-    if (auto* p = apvts.getParameter (steso::pid::seqMode))
+    if (polyBeforeExport)
+    {
+        if (auto* p = apvts.getParameter (steso::pid::polyOn))
+            p->setValueNotifyingHost (1.0f);
+        if (auto* p = apvts.getParameter (steso::pid::seqMode))
+            p->setValueNotifyingHost (p->convertTo0to1 ((float) juce::jlimit (0, 2, modeBeforeExport)));
+    }
+    else if (auto* p = apvts.getParameter (steso::pid::seqMode))
+    {
         p->setValueNotifyingHost (p->convertTo0to1 ((float) juce::jlimit (1, 2, modeBeforeExport)));
+    }
     bypassedByExport = false;
 }
 
@@ -186,7 +224,7 @@ void StesoLeadProcessor::runSequencer (int numSamples, juce::MidiBuffer& toEngin
     const double ppqPerSample = hostBpm / 60.0 / sampleRate;
     const bool latch = params.seqLatch->load() > 0.5f;
     double start = 0.0;
-    bool run = false;
+    bool run = false, continuous = false;
 
     if (hostPlaying && hostPpq.hasValue())
     {
@@ -194,6 +232,8 @@ void StesoLeadProcessor::runSequencer (int numSamples, juce::MidiBuffer& toEngin
         // Hopp i transporten (loop, flytt av spelhuvudet) -> släpp klingande toner.
         if (! hostWasPlaying || std::abs (start - expectedNextPpq) > 1.0e-3)
             flushSequencer (toEngine, toOut);
+        else
+            continuous = true;
         freeRunning = false;
         run = true;
     }
@@ -226,10 +266,14 @@ void StesoLeadProcessor::runSequencer (int numSamples, juce::MidiBuffer& toEngin
         // Låt redan startade toner få sitt slut även när klockan står.
         flushSequencer (toEngine, toOut);
         currentStep = -1;
+        currentPpq = -1.0;
         return;
     }
 
     const double end = start + numSamples * ppqPerSample;
+    // Generera kant i kant med förra blocket: värdens position kan avrunda en aning olika från block
+    // till block, och ett slag precis på gränsen får varken spelas två gånger eller tappas.
+    const double genStart = continuous ? expectedNextPpq : start;
     expectedNextPpq = end;
     if (freeRunning)
         freePpq = end;
@@ -240,7 +284,7 @@ void StesoLeadProcessor::runSequencer (int numSamples, juce::MidiBuffer& toEngin
 
     genEvents.clear();
     outEvents.clear();
-    steso::seq::generate (pattern, settings, chord, start, end, genEvents);
+    steso::seq::generate (pattern, settings, chord, genStart, end, genEvents);
     for (const auto& e : genEvents)
     {
         noteStream.flushUntil (e.ppqOn, outEvents);
@@ -257,6 +301,7 @@ void StesoLeadProcessor::runSequencer (int numSamples, juce::MidiBuffer& toEngin
     }
 
     currentStep = (int64_t) std::floor (start / settings.stepPpq);
+    currentPpq = start;
 }
 
 //==============================================================================
@@ -295,7 +340,7 @@ void StesoLeadProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::M
     hostBpm = juce::jlimit (20.0, 999.0, hostBpm);
     hostBpmAtomic = hostBpm;
 
-    const int seqMode = (int) params.seqMode->load();
+    const int seqMode = effectiveSeqMode();
     engineMidi.clear();
     seqOutMidi.clear();
 
@@ -333,7 +378,10 @@ void StesoLeadProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::M
     if (seqMode != 0)
         runSequencer (numSamples, engineMidi, seqOutMidi);
     else
+    {
         currentStep = -1;
+        currentPpq = -1.0;
+    }
 
     masterGain.setTargetValue (juce::Decibels::decibelsToGain (params.master->load(), -60.0f));
     const int chorusMode = (int) params.chorus->load();

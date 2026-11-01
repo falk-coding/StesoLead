@@ -14,6 +14,8 @@ struct Preset
     std::vector<std::pair<const char*, float>> values;
     // Sekvensermönster i textformat (se seq::Pattern::fromString). Tomt = standardmönster.
     juce::String pattern {};
+    // Polyrytm-spårens tonhöjdssteg (se seq::Pattern::lanesFromString). Tomt = alla 0.
+    juce::String lanes {};
 };
 
 const std::vector<Preset>& getFactoryPresets();

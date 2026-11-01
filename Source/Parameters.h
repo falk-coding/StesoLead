@@ -81,6 +81,23 @@ namespace pid
     inline constexpr const char* seqGateLen  = "seqGateLen";
     inline constexpr const char* seqLatch    = "seqLatch";
     inline constexpr const char* seqMidiOut  = "seqMidiOut";
+
+    // v1.7 Polyrytm. polyOn = Off som standard -> äldre projekt/presets påverkas inte.
+    inline constexpr const char* polyOn      = "polyOn";
+    inline constexpr const char* polyBars    = "polyBars";
+    // Per spår 1..4 (t.ex. "polyPulses1").
+    inline constexpr const char* polyOnIds[]     { "polyOn1", "polyOn2", "polyOn3", "polyOn4" };
+    inline constexpr const char* polyTypeIds[]   { "polyType1", "polyType2", "polyType3", "polyType4" };
+    inline constexpr const char* polyPulsesIds[] { "polyPulses1", "polyPulses2", "polyPulses3", "polyPulses4" };
+    inline constexpr const char* polyHitsIds[]   { "polyHits1", "polyHits2", "polyHits3", "polyHits4" };
+    inline constexpr const char* polyPitchIds[]  { "polyPitch1", "polyPitch2", "polyPitch3", "polyPitch4" };
+    inline constexpr const char* polyStepsIds[]  { "polySteps1", "polySteps2", "polySteps3", "polySteps4" };
+    inline const char* polyLaneOn (int lane)     { return polyOnIds[lane & 3]; }
+    inline const char* polyLaneType (int lane)   { return polyTypeIds[lane & 3]; }
+    inline const char* polyLanePulses (int lane) { return polyPulsesIds[lane & 3]; }
+    inline const char* polyLaneHits (int lane)   { return polyHitsIds[lane & 3]; }
+    inline const char* polyLanePitch (int lane)  { return polyPitchIds[lane & 3]; }
+    inline const char* polyLaneSteps (int lane)  { return polyStepsIds[lane & 3]; }
 } // namespace pid
 
 inline const juce::StringArray waveNames { "Saw", "Square", "Triangle", "Sine" };
@@ -115,6 +132,13 @@ struct ParamPointers
     std::atomic<float>* osc3Wave {}; std::atomic<float>* osc3Semi {}; std::atomic<float>* osc3Fine {};
     std::atomic<float>* mixOsc3 {}; std::atomic<float>* filterType {}; std::atomic<float>* feedback {};
     std::atomic<float>* warmth {}; std::atomic<float>* unison {}; std::atomic<float>* uniDetune {};
+    std::atomic<float>* polyOn {}; std::atomic<float>* polyBars {};
+    struct PolyLane
+    {
+        std::atomic<float>* on {}; std::atomic<float>* type {}; std::atomic<float>* pulses {};
+        std::atomic<float>* hits {}; std::atomic<float>* pitch {}; std::atomic<float>* steps {};
+    };
+    std::array<PolyLane, 4> polyLane {};
 
     void bind (juce::AudioProcessorValueTreeState& apvts);
 };

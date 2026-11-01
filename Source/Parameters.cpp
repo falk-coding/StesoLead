@@ -57,6 +57,8 @@ namespace
     }
 
     juce::ParameterID id (const char* s) { return { s, 1 }; }
+    // Parametrar som tillkommit efter första releasen får högre versionshint (krävs av AU-värdar).
+    juce::ParameterID id2 (const juce::String& s) { return { s, 2 }; }
 } // namespace
 
 juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout()
@@ -176,8 +178,30 @@ juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout()
     fat->addChild (std::make_unique<API> (id (pid::unison), "Unison", 1, 4, 1));
     fat->addChild (std::make_unique<APF> (id (pid::uniDetune), "Unison Detune", Range (0.0f, 1.0f), 0.3f, percentAttr()));
 
+    // v1.7 Polyrytm: polyOn = Off som standard.
+    auto poly = std::make_unique<juce::AudioProcessorParameterGroup> ("poly", "Polyrhythm", "|");
+    poly->addChild (std::make_unique<APC> (id2 (pid::polyOn), "Polyrhythm", juce::StringArray { "Off", "On" }, 0));
+    poly->addChild (std::make_unique<API> (id2 (pid::polyBars), "Poly Cycle Bars", 1, 4, 1));
+    {
+        // Standard när man slår på: 4 mot 3 (grundton + kvint). Spår 3–4 avstängda.
+        constexpr int defPulses[] { 4, 3, 5, 2 };
+        constexpr int defPitch[] { 0, 7, 12, -12 };
+        for (int l = 0; l < seq::polyLanes; ++l)
+        {
+            const auto n = juce::String (l + 1);
+            poly->addChild (std::make_unique<APC> (id2 (pid::polyLaneOn (l)), "Poly " + n + " On",
+                                                   juce::StringArray { "Off", "On" }, l < 2 ? 1 : 0));
+            poly->addChild (std::make_unique<APC> (id2 (pid::polyLaneType (l)), "Poly " + n + " Type", seq::polyTypeNames, 0));
+            poly->addChild (std::make_unique<API> (id2 (pid::polyLanePulses (l)), "Poly " + n + " Pulses", 1, seq::polyMaxPulses, defPulses[l]));
+            poly->addChild (std::make_unique<API> (id2 (pid::polyLaneHits (l)), "Poly " + n + " Hits", 1, seq::polyMaxPulses, seq::polyMaxPulses));
+            poly->addChild (std::make_unique<API> (id2 (pid::polyLanePitch (l)), "Poly " + n + " Pitch", -24, 24, defPitch[l]));
+            poly->addChild (std::make_unique<API> (id2 (pid::polyLaneSteps (l)), "Poly " + n + " Steps", 1, seq::polyMaxSteps, 1));
+        }
+    }
+
     layout.add (std::move (osc1), std::move (osc2), std::move (mix), std::move (filter), std::move (fenv),
-                std::move (aenv), std::move (lfo), std::move (voice), std::move (fx), std::move (seqGroup), std::move (fat));
+                std::move (aenv), std::move (lfo), std::move (voice), std::move (fx), std::move (seqGroup), std::move (fat),
+                std::move (poly));
     return layout;
 }
 
@@ -211,5 +235,13 @@ void ParamPointers::bind (juce::AudioProcessorValueTreeState& s)
     osc3Wave = p (pid::osc3Wave); osc3Semi = p (pid::osc3Semi); osc3Fine = p (pid::osc3Fine);
     mixOsc3 = p (pid::mixOsc3); filterType = p (pid::filterType); feedback = p (pid::feedback);
     warmth = p (pid::warmth); unison = p (pid::unison); uniDetune = p (pid::uniDetune);
+    polyOn = p (pid::polyOn); polyBars = p (pid::polyBars);
+    for (int l = 0; l < 4; ++l)
+    {
+        auto& L = polyLane[(size_t) l];
+        L.on = p (pid::polyLaneOn (l)); L.type = p (pid::polyLaneType (l));
+        L.pulses = p (pid::polyLanePulses (l)); L.hits = p (pid::polyLaneHits (l));
+        L.pitch = p (pid::polyLanePitch (l)); L.steps = p (pid::polyLaneSteps (l));
+    }
 }
 } // namespace steso
