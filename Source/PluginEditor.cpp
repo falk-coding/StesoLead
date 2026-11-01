@@ -63,7 +63,7 @@ void drawLamp (juce::Graphics& g, juce::Rectangle<float> r, juce::Colour lit, ju
     g.fillEllipse (c.x - lr * 0.5f, c.y - lr * 0.6f, lr * 0.5f, lr * 0.35f);
 }
 
-void drawSectionFrame (juce::Graphics& g, juce::Rectangle<float> r, const juce::String& title)
+void drawSectionFrame (juce::Graphics& g, juce::Rectangle<float> r, const juce::String& title, const juce::String& note)
 {
     // Lätt nedsänkt fält i plåten.
     g.setColour (juce::Colours::black.withAlpha (0.16f));
@@ -91,14 +91,54 @@ void drawSectionFrame (juce::Graphics& g, juce::Rectangle<float> r, const juce::
         x += juce::GlyphArrangement::getStringWidth (f2, en) + 8.0f;
     }
 
+    // Notering längst till höger (t.ex. röster).
+    float right = header.getRight();
+    if (note.isNotEmpty())
+    {
+        const auto f3 = panelFont (12.0f).withExtraKerningFactor (0.08f);
+        const float nw = juce::GlyphArrangement::getStringWidth (f3, note) + 2.0f;
+        g.setFont (f3);
+        g.setColour (colours::lampAmber.withAlpha (0.9f));
+        g.drawText (note, juce::Rectangle<float> (right - nw, header.getY() + 1.0f, nw, header.getHeight()),
+                    juce::Justification::centredRight);
+        right -= nw + 8.0f;
+    }
+
     // Graverad linje ut till högerkanten.
     const float ly = header.getCentreY() + 1.0f;
-    if (x < header.getRight() - 4.0f)
+    if (x < right - 4.0f)
     {
         g.setColour (colours::engraveDark.withAlpha (0.7f));
-        g.drawLine (x, ly, header.getRight(), ly, 1.0f);
+        g.drawLine (x, ly, right, ly, 1.0f);
         g.setColour (colours::engraveLight.withAlpha (0.35f));
-        g.drawLine (x, ly + 1.0f, header.getRight(), ly + 1.0f, 1.0f);
+        g.drawLine (x, ly + 1.0f, right, ly + 1.0f, 1.0f);
+    }
+}
+
+void drawRackEar (juce::Graphics& g, juce::Rectangle<float> r)
+{
+    // Böjd plåt: lite ljusare än panelen, mörk fog mot panelen.
+    g.setGradientFill (juce::ColourGradient (colours::metal.brighter (0.12f), r.getX(), r.getY(),
+                                             colours::metalDark, r.getRight(), r.getBottom(), false));
+    g.fillRect (r);
+    g.setColour (colours::engraveLight.withAlpha (0.5f));
+    g.drawLine (r.getX() + 1.0f, r.getY(), r.getX() + 1.0f, r.getBottom(), 1.0f);
+    g.setColour (colours::engraveDark);
+    g.drawLine (r.getRight() - 0.5f, r.getY(), r.getRight() - 0.5f, r.getBottom(), 1.5f);
+    g.drawLine (r.getX(), r.getBottom() - 0.5f, r.getRight(), r.getBottom() - 0.5f, 1.0f);
+
+    // Ovala rackhål med skruv: upptill och nedtill (och i mitten på höga enheter).
+    std::vector<float> ys { r.getY() + 22.0f, r.getBottom() - 22.0f };
+    if (r.getHeight() > 300.0f)
+        ys.push_back (r.getCentreY());
+    for (float y : ys)
+    {
+        auto slot = juce::Rectangle<float> (r.getCentreX() - 9.0f, y - 6.0f, 18.0f, 12.0f);
+        g.setColour (juce::Colour (0xff0b0b0a));
+        g.fillRoundedRectangle (slot, 6.0f);
+        g.setColour (colours::engraveLight.withAlpha (0.4f));
+        g.drawRoundedRectangle (slot.translated (0.0f, 0.8f), 6.0f, 0.8f);
+        drawScrew (g, { r.getCentreX() + 2.0f, y }, 5.0f, 0.4f + y * 0.013f);
     }
 }
 
@@ -291,6 +331,26 @@ void LookAndFeel::drawButtonBackground (juce::Graphics& g, juce::Button& b, cons
     g.drawLine (r.getX(), r.getBottom(), r.getRight(), r.getBottom(), 1.2f);
     g.setColour (colours::engraveDark);
     g.drawRect (r.expanded (0.5f), 1.0f);
+
+    // Växlingsknappar har en signallampa till vänster. "active" = något pågår (t.ex. sekvensern spelar).
+    if (b.getClickingTogglesState())
+    {
+        const bool lit = b.getToggleState() || (bool) b.getProperties().getWithDefault ("active", false);
+        const auto colour = b.getToggleState() ? colours::lampRed : colours::lampAmber;
+        const float d = std::min (12.0f, r.getHeight() - 8.0f);
+        drawLamp (g, juce::Rectangle<float> (r.getX() + 6.0f, r.getCentreY() - d * 0.5f, d, d), colour,
+                  colours::lampRedOff, lit);
+    }
+}
+
+void LookAndFeel::drawButtonText (juce::Graphics& g, juce::TextButton& b, bool, bool)
+{
+    auto r = b.getLocalBounds().reduced (4, 0);
+    if (b.getClickingTogglesState())
+        r.removeFromLeft (18);   // plats för lampan
+    g.setFont (getTextButtonFont (b, b.getHeight()));
+    g.setColour (colours::text.withAlpha (b.isEnabled() ? 1.0f : 0.4f));
+    g.drawFittedText (b.getButtonText(), r, juce::Justification::centred, 1);
 }
 
 void LookAndFeel::drawPopupMenuBackground (juce::Graphics& g, int width, int height)
@@ -368,7 +428,7 @@ void Section::add (juce::AudioProcessorValueTreeState& apvts, const juce::String
 
 void Section::paint (juce::Graphics& g)
 {
-    drawSectionFrame (g, getLocalBounds().toFloat().reduced (3.0f), title);
+    drawSectionFrame (g, getLocalBounds().toFloat().reduced (3.0f), title, note);
 }
 
 void Section::resized()
@@ -487,10 +547,6 @@ StesoLeadEditor::StesoLeadEditor (StesoLeadProcessor& p)
     content.addAndMakeVisible (saveButton);
     content.addAndMakeVisible (deleteButton);
 
-    voicesLabel.setJustificationType (juce::Justification::centredRight);
-    voicesLabel.setColour (juce::Label::textColourId, steso::ui::colours::dimText);
-    voicesLabel.setFont (steso::ui::panelFont (14.0f));
-    content.addAndMakeVisible (voicesLabel);
 
     keyboard.setAvailableRange (24, 108);
     keyboard.setLowestVisibleKey (36);
@@ -510,12 +566,23 @@ StesoLeadEditor::StesoLeadEditor (StesoLeadProcessor& p)
     content.addAndMakeVisible (seqPanel);
 
     addAndMakeVisible (content);
-    content.setSize (baseWidth, baseHeight);
+    // Utfällda delar sparas i projektet (inte som parametrar).
+    showSeq = (bool) processor.apvts.state.getProperty ("uiShowSeq", false);
+    showKeys = (bool) processor.apvts.state.getProperty ("uiShowKeys", false);
+    for (auto* t : { &seqToggle, &keysToggle })
+    {
+        t->setClickingTogglesState (true);
+        content.addAndMakeVisible (*t);
+    }
+    seqToggle.setToggleState (showSeq, juce::dontSendNotification);
+    keysToggle.setToggleState (showKeys, juce::dontSendNotification);
+    seqToggle.setTooltip (juce::String::fromUTF8 ("Visa/dölj sekvensern (show/hide sequencer). Lampan lyser gult när den spelar."));
+    keysToggle.setTooltip (juce::String::fromUTF8 ("Visa/dölj klaviaturen (show/hide keyboard)"));
+    seqToggle.onClick = [this] { setPanelsVisible (seqToggle.getToggleState(), showKeys); };
+    keysToggle.onClick = [this] { setPanelsVisible (showSeq, keysToggle.getToggleState()); };
 
     setResizable (true, true);
-    setResizeLimits (baseWidth * 6 / 10, baseHeight * 6 / 10, baseWidth * 2, baseHeight * 2);
-    getConstrainer()->setFixedAspectRatio ((double) baseWidth / (double) baseHeight);
-    setSize (baseWidth, baseHeight);
+    applyPanelSize (1.0f);
 
     refreshPresetBox();
     startTimerHz (30);
@@ -526,24 +593,63 @@ StesoLeadEditor::~StesoLeadEditor()
     setLookAndFeel (nullptr);
 }
 
+int StesoLeadEditor::currentBaseHeight() const
+{
+    return synthH + (showSeq ? unitGap + seqH : 0) + (showKeys ? unitGap + keysH : 0);
+}
+
+void StesoLeadEditor::setPanelsVisible (bool sequencer, bool keys)
+{
+    showSeq = sequencer;
+    showKeys = keys;
+    processor.apvts.state.setProperty ("uiShowSeq", showSeq, nullptr);
+    processor.apvts.state.setProperty ("uiShowKeys", showKeys, nullptr);
+    seqToggle.setToggleState (showSeq, juce::dontSendNotification);
+    keysToggle.setToggleState (showKeys, juce::dontSendNotification);
+    applyPanelSize (getWidth() > 0 ? (float) getWidth() / (float) baseWidth : 1.0f);
+}
+
+void StesoLeadEditor::applyPanelSize (float scale)
+{
+    const int h = currentBaseHeight();
+    seqPanel.setVisible (showSeq);
+    keyboard.setVisible (showKeys);
+    content.setSize (baseWidth, h);
+
+    // Nya gränser och proportioner för den nya höjden innan storleken ändras.
+    setResizeLimits (baseWidth * 6 / 10, h * 6 / 10, baseWidth * 2, h * 2);
+    getConstrainer()->setFixedAspectRatio ((double) baseWidth / (double) h);
+    setSize (juce::roundToInt ((float) baseWidth * scale), juce::roundToInt ((float) h * scale));
+    resized();
+    repaint();
+}
+
 void StesoLeadEditor::paint (juce::Graphics& g)
 {
     using namespace steso::ui;
-    g.fillAll (colours::metalDark);
+    g.fillAll (juce::Colour (0xff0c0c0b));   // racket bakom enheterna
 
-    // Allt ritas i skalad baskoordinat (samma som innehållet).
     g.addTransform (content.getTransform());
     if (panelTexture.isNull())
-        panelTexture = makePanelTexture (baseWidth, baseHeight);
-    g.drawImageAt (panelTexture, 0, 0);
+        panelTexture = makePanelTexture (innerW, baseHeight);
 
-    // Skruvar i plåtens hörn.
-    drawScrew (g, { 9.0f, 9.0f }, 4.5f, 0.6f);
-    drawScrew (g, { (float) baseWidth - 9.0f, 9.0f }, 4.5f, 2.1f);
-    drawScrew (g, { 9.0f, (float) baseHeight - 9.0f }, 4.5f, 1.2f);
-    drawScrew (g, { (float) baseWidth - 9.0f, (float) baseHeight - 9.0f }, 4.5f, 0.2f);
+    // Rita en rackenhet: plåt med textur + rackfästen på båda sidor.
+    auto drawUnit = [&] (int y, int h)
+    {
+        g.drawImage (panelTexture, earW, y, innerW, h, 0, y, innerW, h);
+        g.setColour (colours::engraveDark);
+        g.drawRect (juce::Rectangle<int> (earW, y, innerW, h), 1);
+        drawRackEar (g, juce::Rectangle<float> (0.0f, (float) y, (float) earW, (float) h));
+        drawRackEar (g, juce::Rectangle<float> ((float) (earW + innerW), (float) y, (float) earW, (float) h));
+    };
 
-    auto header = juce::Rectangle<float> (24.0f, 8.0f, 600.0f, 44.0f);
+    int y = 0;
+    drawUnit (y, synthH);
+    y += synthH;
+    if (showSeq)  { y += unitGap; drawUnit (y, seqH);  y += seqH; }
+    if (showKeys) { y += unitGap; drawUnit (y, keysH); y += keysH; }
+
+    auto header = juce::Rectangle<float> ((float) earW + 20.0f, 8.0f, 600.0f, 44.0f);
     const auto title = panelFont (32.0f).withExtraKerningFactor (0.16f);
     g.setFont (title);
     g.setColour (colours::text);
@@ -561,25 +667,24 @@ void StesoLeadEditor::resized()
     const float scale = (float) getWidth() / (float) baseWidth;
     content.setTransform (juce::AffineTransform::scale (scale));
 
-    auto r = juce::Rectangle<int> (0, 0, baseWidth, baseHeight).reduced (12, 8);
+    // --- Synthenheten
+    auto r = juce::Rectangle<int> (earW, 0, innerW, synthH).reduced (12, 8);
 
     auto header = r.removeFromTop (46);
-    header.removeFromLeft (420);
-    voicesLabel.setBounds (header.removeFromRight (130).reduced (0, 10));
-    header.removeFromRight (8);
+    header.removeFromLeft (404);
     nextButton.setBounds (header.removeFromRight (34).reduced (0, 8));
     header.removeFromRight (4);
-    presetBox.setBounds (header.removeFromRight (230).reduced (0, 8));
+    presetBox.setBounds (header.removeFromRight (206).reduced (0, 8));
     header.removeFromRight (4);
     prevButton.setBounds (header.removeFromRight (34).reduced (0, 8));
     header.removeFromRight (8);
-    deleteButton.setBounds (header.removeFromRight (104).reduced (0, 8));
+    deleteButton.setBounds (header.removeFromRight (96).reduced (0, 8));
     header.removeFromRight (4);
-    saveButton.setBounds (header.removeFromRight (90).reduced (0, 8));
-
-    keyboard.setBounds (r.removeFromBottom (62).reduced (3, 4));
-    r.removeFromBottom (2);
-    seqPanel.setBounds (r.removeFromBottom (268));
+    saveButton.setBounds (header.removeFromRight (84).reduced (0, 8));
+    header.removeFromRight (8);
+    keysToggle.setBounds (header.removeFromRight (94).reduced (0, 8));
+    header.removeFromRight (4);
+    seqToggle.setBounds (header.removeFromRight (94).reduced (0, 8));
 
     const int rowH = r.getHeight() / 4;
     const int unit = r.getWidth() / 16;   // 16 kolumner totalt per rad
@@ -602,6 +707,20 @@ void StesoLeadEditor::resized()
     voice.setBounds (row4.removeFromLeft (unit * 8));
     fx.setBounds (row4.removeFromLeft (unit * 6));
     output.setBounds (row4);
+
+    // --- Sekvenser- och klaviaturenheterna under
+    int y = synthH;
+    if (showSeq)
+    {
+        y += unitGap;
+        seqPanel.setBounds (juce::Rectangle<int> (earW, y, innerW, seqH).reduced (12, 6));
+        y += seqH;
+    }
+    if (showKeys)
+    {
+        y += unitGap;
+        keyboard.setBounds (juce::Rectangle<int> (earW, y, innerW, keysH).reduced (14, 8));
+    }
 }
 
 void StesoLeadEditor::timerCallback()
@@ -614,14 +733,23 @@ void StesoLeadEditor::timerCallback()
         seqPanel.bindState();
     }
 
-    seqPanel.refresh();
+    if (showSeq)
+        seqPanel.refresh();
+
+    // Lampan på Sekv.-knappen lyser gult när sekvensern spelar men är infälld.
+    const bool seqActive = ! showSeq && processor.getCurrentStep() >= 0;
+    if ((bool) seqToggle.getProperties().getWithDefault ("active", false) != seqActive)
+    {
+        seqToggle.getProperties().set ("active", seqActive);
+        seqToggle.repaint();
+    }
 
     const int v = processor.getActiveVoiceCount();
     if (v != lastVoices)
     {
         lastVoices = v;
-        voicesLabel.setText (juce::String::fromUTF8 ("RÖSTER (VOICES) ") + juce::String (v) + "/" + juce::String (steso::dsp::SynthEngine::maxVoices),
-                             juce::dontSendNotification);
+        output.setHeaderNote (juce::String::fromUTF8 ("RÖSTER ") + juce::String (v) + "/"
+                              + juce::String (steso::dsp::SynthEngine::maxVoices));
     }
 }
 

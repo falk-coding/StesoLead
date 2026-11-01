@@ -580,18 +580,38 @@ void testUserPresets()
     std::cout << "  klart" << std::endl;
 }
 
-void screenshot (const juce::File& file)
+void snapshot (juce::Component& c, const juce::File& file)
 {
-    std::unique_ptr<StesoLeadProcessor> proc (dynamic_cast<StesoLeadProcessor*> (createPluginFilter()));
-    proc->setCurrentProgram (findPreset (*proc, "Three Osc Lead"));
-    std::unique_ptr<juce::AudioProcessorEditor> editor (proc->createEditor());
-    editor->setSize (StesoLeadEditor::baseWidth, StesoLeadEditor::baseHeight);
-    const auto image = editor->createComponentSnapshot (editor->getLocalBounds(), true, 1.0f);
+    const auto image = c.createComponentSnapshot (c.getLocalBounds(), true, 1.0f);
     file.deleteFile();
     juce::FileOutputStream out (file);
     juce::PNGImageFormat png;
     check (out.openedOk() && png.writeImageToStream (image, out), "kunde inte spara skärmdump");
-    std::cout << "Skärmdump: " << file.getFullPathName() << std::endl;
+    std::cout << "Skärmdump: " << file.getFullPathName() << " (" << image.getWidth() << "x" << image.getHeight() << ")" << std::endl;
+}
+
+void screenshot (const juce::File& file)
+{
+    std::unique_ptr<StesoLeadProcessor> proc (dynamic_cast<StesoLeadProcessor*> (createPluginFilter()));
+    proc->setCurrentProgram (findPreset (*proc, "Odd Seven Acid"));
+    std::unique_ptr<juce::AudioProcessorEditor> base (proc->createEditor());
+    auto* editor = dynamic_cast<StesoLeadEditor*> (base.get());
+
+    // Kompakt (standard): bara synthenheten.
+    check (editor->getHeight() == StesoLeadEditor::synthH, "editorn startar inte kompakt");
+    snapshot (*editor, file);
+
+    // Allt utfällt: synth + sekvenser + klaviatur, och storleken följer med.
+    editor->setPanelsVisible (true, true);
+    check (editor->getHeight() == StesoLeadEditor::baseHeight, "editorn växer inte när delarna fälls ut");
+    check ((bool) proc->apvts.state.getProperty ("uiShowSeq", false), "utfällt läge sparas inte");
+    snapshot (*editor, file.getSiblingFile (file.getFileNameWithoutExtension() + "-full.png"));
+
+    // Skalning bevaras när man fäller in igen.
+    editor->setSize (editor->getWidth() * 3 / 2, editor->getHeight() * 3 / 2);
+    editor->setPanelsVisible (false, true);
+    const int expectedH = juce::roundToInt ((StesoLeadEditor::synthH + StesoLeadEditor::unitGap + StesoLeadEditor::keysH) * 1.5f);
+    check (std::abs (editor->getHeight() - expectedH) <= 2, "skalningen följer inte med vid utfällning");
 }
 } // namespace
 

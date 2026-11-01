@@ -41,7 +41,10 @@ void drawScrew (juce::Graphics&, juce::Point<float> centre, float radius, float 
 // Signallampa (glöder när den är tänd).
 void drawLamp (juce::Graphics&, juce::Rectangle<float> r, juce::Colour lit, juce::Colour off, bool on, float alpha = 1.0f);
 // Sektionsrubrik: kyrilliska + latin, med graverad linje.
-void drawSectionFrame (juce::Graphics&, juce::Rectangle<float> r, const juce::String& title);
+// note = kort text längst till höger i rubriken (t.ex. röster i bruk).
+void drawSectionFrame (juce::Graphics&, juce::Rectangle<float> r, const juce::String& title, const juce::String& note = {});
+// Rackfäste (19") med ovala hål och skruvar.
+void drawRackEar (juce::Graphics&, juce::Rectangle<float> r);
 // Grynig, repig plåttextur (genereras en gång).
 juce::Image makePanelTexture (int width, int height);
 
@@ -61,6 +64,7 @@ public:
     juce::Font getTextButtonFont (juce::TextButton&, int buttonHeight) override;
     void drawButtonBackground (juce::Graphics&, juce::Button&, const juce::Colour&, bool highlighted, bool down) override;
     void drawPopupMenuBackground (juce::Graphics&, int width, int height) override;
+    void drawButtonText (juce::Graphics&, juce::TextButton&, bool highlighted, bool down) override;
 };
 
 // En ratt eller en väljare med namn under.
@@ -91,9 +95,10 @@ public:
               bool isChoice = false);
     void paint (juce::Graphics&) override;
     void resized() override;
+    void setHeaderNote (const juce::String& n) { if (n != note) { note = n; repaint(); } }
 
 private:
-    juce::String title;
+    juce::String title, note;
     juce::Colour colour;
     std::vector<std::unique_ptr<Control>> controls;
 };

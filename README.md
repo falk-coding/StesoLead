@@ -35,6 +35,12 @@ Ny release: **Actions → Build → Run workflow** med `release_tag` (t.ex. `v1.
 - Nya funktioner är avstängda som standard, så äldre presets och projekt låter som förut.
 - **Skin:** sliten apparat från östblocket – grå plåt med repor, bakelitrattar, signallampor i sekvensern. Sektionsnamn på svenska med engelska inom parentes.
 
+## Rack-utseende (v1.5)
+- Synthen är en 19"-rackmodul med rackfästen. **Sekv. (Seq)** och **Klav. (Keys)** fäller ut sekvensern och
+  klaviaturen som egna rackenheter under – fönstret växer/krymper och behåller skalningen.
+- Lampan på Sekv. lyser gult när sekvensern spelar men är infälld. Utfällt läge sparas i projektet.
+- Antal röster i bruk visas i UTGÅNG-sektionen.
+
 ## Egna presets (v1.4)
 - **Spara (Save)** sparar alla rattlägen + sekvensermönstret som eget preset. Samma namn = skriv över (frågar först).
 - **Ta bort (Delete)** flyttar det valda egna presetet till papperskorgen.

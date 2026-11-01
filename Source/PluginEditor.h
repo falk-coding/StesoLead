@@ -15,8 +15,16 @@ public:
     void paint (juce::Graphics&) override;
     void resized() override;
 
-    static constexpr int baseWidth = 1120;
-    static constexpr int baseHeight = 940;
+    // Rack-layout: synthenheten + (utfällbart) sekvenser- och klaviaturenhet, alla med 19"-rackfästen.
+    static constexpr int earW = 36;                         // rackfäste per sida
+    static constexpr int innerW = 1120;                     // panelens bredd mellan fästena
+    static constexpr int baseWidth = innerW + 2 * earW;
+    static constexpr int synthH = 542, seqH = 272, keysH = 74, unitGap = 6;
+    static constexpr int baseHeight = synthH + unitGap + seqH + unitGap + keysH;   // allt utfällt
+
+    // Fäll ut/in sekvenser och klaviatur (sparas i projektet).
+    void setPanelsVisible (bool sequencer, bool keyboard);
+    int currentBaseHeight() const;
 
 private:
     void timerCallback() override;
@@ -27,6 +35,7 @@ private:
     void deletePresetDialog();
     int currentUserIndex() const;   // index i userFiles för laddat eget preset, -1 = inget
     void selectEntry (int entry);    // >= 0 fabriksprogram, < 0 eget preset -(index+1)
+    void applyPanelSize (float scale);
 
     static constexpr int userIdBase = 100000;
 
@@ -38,8 +47,9 @@ private:
     juce::TextButton prevButton { "<" }, nextButton { ">" };
     juce::TextButton saveButton { "Spara (Save)" };
     juce::TextButton deleteButton { juce::String::fromUTF8 ("Ta bort (Delete)") };
+    juce::TextButton seqToggle { "Sekv. (Seq)" }, keysToggle { "Klav. (Keys)" };
+    bool showSeq = false, showKeys = false;
     juce::Array<juce::File> userFiles;
-    juce::Label voicesLabel;
 
     steso::ui::Section osc1 { "TONGENERATOR 1|Osc 1", steso::ui::colours::accent };
     steso::ui::Section osc2 { "TONGENERATOR 2|Osc 2", steso::ui::colours::accent };
