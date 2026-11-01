@@ -2,7 +2,9 @@
 
 Polyfon analog-inspirerad synth som VST3 (Mac + Windows) och AU (Mac), byggd med JUCE 8.0.10.
 Produkt: **Bakelit**, varumärke: **Falk Instruments** (ägs av Hans enskilda firma ijoli, liksom synkaoss).
-Internt kodnamn **StesoLead** (repo, klassnamn, CMake-target) – syns aldrig för användaren.
+Repo: **github.com/falk-coding/Bakelit** (hette StesoLead till 2026-11-01; gamla länkar omdirigeras).
+Internt kodnamn **StesoLead** (klassnamn, CMake-target, mappnamn i molnmiljön) – syns aldrig för användaren.
+GitHub-verktygen: använd `owner: falk-coding`, `repo: bakelit`.
 
 ## Användaren
 Hans: tekniskt kunnig men inte utvecklare, svarar på svenska, vill ha korta skumbara svar (ADHD), komplett lösning direkt.
