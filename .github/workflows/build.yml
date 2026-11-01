@@ -68,8 +68,8 @@ jobs:
 
   macos:
     name: macOS – VST3 och AU
-    # macos-15 fick inga runners (nov 2026) – macos-14 bygger samma universal-binär.
-    runs-on: macos-14
+    # macos-14 pensioneras 2026-11-02, macos-15 hade lång kö vid flytten – macos-26 bygger samma universal-binär.
+    runs-on: macos-26
     steps:
       - uses: actions/checkout@v4
 
